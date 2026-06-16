@@ -7,8 +7,8 @@ services:
     runtime: python
     plan: standard
     region: oregon
-    buildCommand: pip install -r requirements.txt && python -m playwright install --with-deps chromium
-    startCommand: streamlit run app/streamlit_app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false
+    buildCommand: pip install -r requirements.txt
+    startCommand: playwright install --with-deps chromium && streamlit run app/streamlit_app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false
     healthCheckPath: /_stcore/health
     envVars:
       - key: PYTHONPATH
