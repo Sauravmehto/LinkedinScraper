@@ -1,4 +1,4 @@
-"""Simple GTM report UI: upload Excel/CSV → run-gtm → download final report."""
+"""GTM Report Generator — upload Excel/CSV → run pipeline → download report."""
 
 from __future__ import annotations
 
@@ -14,28 +14,29 @@ import streamlit as st
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
 SAMPLE_PATH = DATA_DIR / "Sample_file.xlsx"
-INPUT_PATH = DATA_DIR / "Sample_file.xlsx"
+INPUT_PATH = DATA_DIR / "user_input.xlsx"
 REPORT_PATH = DATA_DIR / "GTM_Final_report.xlsx"
 MAIN_SCRIPT = REPO_ROOT / "main.py"
 
 st.set_page_config(page_title="GTM Report Generator", page_icon="📊", layout="centered")
 
-st.title("GTM Report Generator")
-st.caption("Upload your company list, run the pipeline, download the HubSpot report.")
-
-if "running" not in st.session_state:
-    st.session_state.running = False
-if "last_log" not in st.session_state:
-    st.session_state.last_log = ""
-if "pipeline_ok" not in st.session_state:
-    st.session_state.pipeline_ok = False
-if "saved_file" not in st.session_state:
-    st.session_state.saved_file = False
-if "last_upload_name" not in st.session_state:
-    st.session_state.last_upload_name = None
+# ── session state defaults ────────────────────────────────────────────────────
+for _k, _v in {
+    "running": False,
+    "last_log": "",
+    "pipeline_ok": False,
+    "file_uploaded": False,   # True only when user uploads in this session
+    "last_upload_sig": "",
+}.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
 
 
-def _reset_pipeline_result() -> None:
+def _upload_sig(name: str, size: int) -> str:
+    return f"{name}:{size}"
+
+
+def _reset() -> None:
     st.session_state.pipeline_ok = False
     st.session_state.last_log = ""
     if REPORT_PATH.exists():
@@ -45,34 +46,22 @@ def _reset_pipeline_result() -> None:
             pass
 
 
-def _save_upload(uploaded) -> None:
+def _save(uploaded) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    name = uploaded.name.lower()
-    if name.endswith(".csv"):
+    if uploaded.name.lower().endswith(".csv"):
         df = pd.read_csv(BytesIO(uploaded.getvalue()), encoding="utf-8")
         df.to_excel(INPUT_PATH, index=False, sheet_name="Sheet1")
-        st.success(f"CSV converted and saved as `{INPUT_PATH.name}`")
     else:
         INPUT_PATH.write_bytes(uploaded.getvalue())
-        st.success(f"Saved as `{INPUT_PATH.name}`")
-    st.session_state.saved_file = True
 
 
 def _run_pipeline() -> tuple[bool, str]:
-    cmd = [
-        sys.executable,
-        str(MAIN_SCRIPT),
-        "run-gtm",
-        "--input",
-        str(INPUT_PATH),
-    ]
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     root = str(REPO_ROOT)
     env["PYTHONPATH"] = root if not env.get("PYTHONPATH") else f"{root}{os.pathsep}{env['PYTHONPATH']}"
-
     proc = subprocess.Popen(
-        cmd,
+        [sys.executable, str(MAIN_SCRIPT), "run-gtm", "--input", str(INPUT_PATH)],
         cwd=REPO_ROOT,
         env=env,
         stdout=subprocess.PIPE,
@@ -86,78 +75,98 @@ def _run_pipeline() -> tuple[bool, str]:
     for line in proc.stdout:
         lines.append(line.rstrip("\n"))
     proc.wait()
-    log_text = "\n".join(lines)
-    ok = proc.returncode == 0 and REPORT_PATH.exists()
-    return ok, log_text
+    return proc.returncode == 0 and REPORT_PATH.exists(), "\n".join(lines)
 
 
-# 1. Download sample file
+# ── UI ────────────────────────────────────────────────────────────────────────
+
+st.title("GTM Report Generator")
+st.caption("Upload your company list, run the pipeline, then download your HubSpot report.")
+
+# Step 1 — sample download
+st.subheader("Step 1 · Download sample file")
 if SAMPLE_PATH.exists():
     st.download_button(
-        label="Download sample file",
+        "Download Sample_file.xlsx",
         data=SAMPLE_PATH.read_bytes(),
         file_name="Sample_file.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
 else:
-    st.warning("Sample file not found at `data/Sample_file.xlsx`.")
+    st.warning("Sample file not found (`data/Sample_file.xlsx`).")
 
 st.divider()
 
-# 2. Upload (.xlsx or UTF-8 .csv)
+# Step 2 — upload
+st.subheader("Step 2 · Upload your company file")
+st.caption("Accepted: .xlsx or .csv (UTF-8) · Required column: Official Website")
+
 uploaded = st.file_uploader(
-    "Upload company file (.xlsx or .csv UTF-8)",
+    "Choose file",
     type=["xlsx", "csv"],
+    label_visibility="collapsed",
+    disabled=st.session_state.running,
 )
 
 if uploaded is not None:
-    if uploaded.name != st.session_state.last_upload_name:
+    sig = _upload_sig(uploaded.name, uploaded.size)
+    if sig != st.session_state.last_upload_sig:
         try:
-            _reset_pipeline_result()
-            _save_upload(uploaded)
-            st.session_state.last_upload_name = uploaded.name
+            _reset()
+            _save(uploaded)
+            st.session_state.file_uploaded = True
+            st.session_state.last_upload_sig = sig
         except Exception as exc:
             st.error(f"Could not read file: {exc}")
-            st.session_state.saved_file = False
-elif INPUT_PATH.exists():
-    st.session_state.saved_file = True
+            st.session_state.file_uploaded = False
+    if st.session_state.file_uploaded:
+        st.success(f"File ready: **{uploaded.name}**")
+else:
+    # User cleared the uploader — disable Run Pipeline again
+    if st.session_state.last_upload_sig:
+        st.session_state.file_uploaded = False
+        st.session_state.last_upload_sig = ""
+        _reset()
 
-has_input = st.session_state.saved_file and INPUT_PATH.exists()
+st.divider()
 
-# 3. Run pipeline
+# Step 3 — run pipeline
+st.subheader("Step 3 · Run pipeline")
+if not st.session_state.file_uploaded:
+    st.info("Upload a company file above to enable **Run Pipeline**.")
+
 run_clicked = st.button(
     "Run Pipeline",
     type="primary",
-    disabled=st.session_state.running or not has_input,
+    disabled=not st.session_state.file_uploaded or st.session_state.running,
     use_container_width=True,
 )
 
 if run_clicked:
-    if not INPUT_PATH.exists():
-        st.error("Upload a file first.")
+    st.session_state.running = True
+    st.session_state.pipeline_ok = False
+    with st.spinner("Running pipeline… this may take 5–15 minutes."):
+        ok, log = _run_pipeline()
+    st.session_state.running = False
+    st.session_state.last_log = log
+    st.session_state.pipeline_ok = ok
+    if ok:
+        st.success("Pipeline finished. Download your report below.")
     else:
-        st.session_state.running = True
-        st.session_state.pipeline_ok = False
-        with st.spinner("Running pipeline… this may take several minutes."):
-            ok, log = _run_pipeline()
-        st.session_state.running = False
-        st.session_state.last_log = log
-        st.session_state.pipeline_ok = ok
-        if ok:
-            st.success("Pipeline finished. You can download your report below.")
-        else:
-            st.error("Pipeline failed. See log below.")
-        st.rerun()
+        st.error("Pipeline failed. See log below.")
+    st.rerun()
 
 if st.session_state.last_log:
     with st.expander("Pipeline log", expanded=not st.session_state.pipeline_ok):
         st.code(st.session_state.last_log[-8000:], language=None)
 
-# 4. Download report — only after a successful run
+# Step 4 — download (only after successful run this session)
 if st.session_state.pipeline_ok and REPORT_PATH.exists():
+    st.divider()
+    st.subheader("Step 4 · Download your report")
     st.download_button(
-        label="Download GTM_Final_report.xlsx",
+        "Download GTM_Final_report.xlsx",
         data=REPORT_PATH.read_bytes(),
         file_name="GTM_Final_report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -165,4 +174,4 @@ if st.session_state.pipeline_ok and REPORT_PATH.exists():
         use_container_width=True,
     )
 
-st.caption("Close Excel if `GTM_Final_report.xlsx` is open before running.")
+st.caption("Tip: Close Excel if `GTM_Final_report.xlsx` is open before running.")
