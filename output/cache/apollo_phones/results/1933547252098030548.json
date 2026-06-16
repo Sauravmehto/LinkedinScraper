@@ -1,0 +1,581 @@
+{
+  "request_id": "1933547252098030548",
+  "person": {
+    "id": "6671e40b07583900012ab090",
+    "first_name": "Juan",
+    "last_name": "Duenas",
+    "name": "Juan Duenas",
+    "linkedin_url": "http://www.linkedin.com/in/juan-due%c3%b1as-951a7716",
+    "title": "Principal, Director of Acquisitions",
+    "photo_url": "https://static.licdn.com/aero-v1/sc/h/9c8pery4andzj6ohjkjp54ma2",
+    "twitter_url": null,
+    "github_url": null,
+    "facebook_url": null,
+    "extrapolated_email_confidence": null,
+    "headline": "Principal, Director at AEW Capital Management",
+    "organization_id": "5b8447aef874f71c69b70096",
+    "employment_history": [
+      {
+        "_id": "6a134721db6298000177d4ad",
+        "created_at": null,
+        "current": true,
+        "degree": null,
+        "description": null,
+        "emails": null,
+        "end_date": null,
+        "grade_level": null,
+        "kind": null,
+        "major": null,
+        "org_matched_by_name": false,
+        "organization_id": "5b8447aef874f71c69b70096",
+        "organization_name": "AEW Capital Management",
+        "raw_address": null,
+        "start_date": "2005-03-01",
+        "title": "Principal, Director of Acquisitions",
+        "updated_at": null,
+        "id": "6a134721db6298000177d4ad",
+        "key": "6a134721db6298000177d4ad"
+      },
+      {
+        "_id": "6a134721db6298000177d4ae",
+        "created_at": null,
+        "current": false,
+        "degree": null,
+        "description": null,
+        "emails": null,
+        "end_date": "2005-03-01",
+        "grade_level": null,
+        "kind": null,
+        "major": null,
+        "org_matched_by_name": false,
+        "organization_id": null,
+        "organization_name": "CB Richard Ellis Investors",
+        "raw_address": null,
+        "start_date": "1997-11-01",
+        "title": "Director",
+        "updated_at": null,
+        "id": "6a134721db6298000177d4ae",
+        "key": "6a134721db6298000177d4ae"
+      },
+      {
+        "_id": "6a134721db6298000177d4af",
+        "created_at": null,
+        "current": false,
+        "degree": null,
+        "description": null,
+        "emails": null,
+        "end_date": "1997-11-01",
+        "grade_level": null,
+        "kind": null,
+        "major": null,
+        "org_matched_by_name": false,
+        "organization_id": "5f488a7e901b45008c12d237",
+        "organization_name": "Price Waterhouse Management Consultants",
+        "raw_address": null,
+        "start_date": "1993-06-01",
+        "title": "Consultant",
+        "updated_at": null,
+        "id": "6a134721db6298000177d4af",
+        "key": "6a134721db6298000177d4af"
+      }
+    ],
+    "street_address": "",
+    "city": "Los Angeles",
+    "state": "California",
+    "country": "United States",
+    "postal_code": null,
+    "formatted_address": "Los Angeles, CA, USA",
+    "time_zone": "America/Los_Angeles",
+    "email": "juan.duenas@aew.com",
+    "email_status": "verified",
+    "organization": {
+      "id": "5b8447aef874f71c69b70096",
+      "name": "AEW",
+      "website_url": "http://www.aew.com",
+      "angellist_url": null,
+      "linkedin_url": "http://www.linkedin.com/company/aew-global",
+      "twitter_url": "https://twitter.com/aewglobal",
+      "facebook_url": "https://facebook.com/aewglobal",
+      "primary_phone": {
+        "number": "+1 617-261-9000",
+        "source": "Owler",
+        "sanitized_number": "+16172619000"
+      },
+      "languages": [
+        "English"
+      ],
+      "alexa_ranking": null,
+      "phone": "+1 617-261-9000",
+      "linkedin_uid": "16141",
+      "founded_year": 1981,
+      "publicly_traded_symbol": null,
+      "publicly_traded_exchange": null,
+      "logo_url": "https://zenprospect-production.s3.amazonaws.com/uploads/pictures/69a7b16c1071910001c0841c/picture",
+      "crunchbase_url": null,
+      "primary_domain": "aew.com",
+      "sic_codes": [
+        "6799"
+      ],
+      "naics_codes": [
+        "53139"
+      ],
+      "sanitized_phone": "+16172619000",
+      "industry": "real estate",
+      "estimated_num_employees": 1300,
+      "keywords": [
+        "private real estate strategies",
+        "comingled funds",
+        "real estate debt",
+        "club deals",
+        "separate accounts",
+        "reits",
+        "retail investor funds",
+        "research-driven strategies",
+        "services",
+        "portfolio diversification",
+        "property portfolio management",
+        "asset management",
+        "public infrastructure investments",
+        "market trends",
+        "property types",
+        "b2b",
+        "property assets",
+        "asset classes",
+        "global real estate",
+        "public-private partnerships",
+        "specialty property management",
+        "urban regeneration",
+        "capital raising",
+        "investment strategies",
+        "active asset management",
+        "other activities related to real estate",
+        "public policy real estate",
+        "investment management",
+        "office buildings",
+        "public-private real estate projects",
+        "fund management",
+        "public-private collaborations",
+        "public sector real estate strategies",
+        "public sector asset management",
+        "real estate investment management",
+        "investment advisory",
+        "private equity",
+        "property portfolio",
+        "separately managed accounts",
+        "client services",
+        "public sector real estate",
+        "healthcare real estate",
+        "sustainability",
+        "portfolio optimization",
+        "property valuation",
+        "risk assessment",
+        "capital markets",
+        "market analysis",
+        "funds",
+        "brokerage",
+        "real estate analytics",
+        "dispositions",
+        "risk mitigation",
+        "asset valuation",
+        "global assets",
+        "sustainable investing",
+        "life sciences properties",
+        "closed-end funds",
+        "institutional clients",
+        "open-end funds",
+        "real estate",
+        "real estate funds",
+        "institutional investors",
+        "property sectors",
+        "investment consulting",
+        "retail centers",
+        "market research",
+        "industrial assets",
+        "property development",
+        "logistics",
+        "public real estate portfolios",
+        "fund performance",
+        "logistics facilities",
+        "capital management",
+        "multifamily properties",
+        "real estate investment",
+        "long-term value",
+        "active management",
+        "fundraising",
+        "portfolio management",
+        "property acquisitions",
+        "asset allocation",
+        "public sector property management",
+        "risk management",
+        "financial services",
+        "research",
+        "public asset management",
+        "assets under management",
+        "north america",
+        "europe",
+        "asia pacific",
+        "core strategies",
+        "value-add strategies",
+        "opportunistic strategies",
+        "real estate securities",
+        "debt financing",
+        "capital appreciation",
+        "net operating income",
+        "market insights",
+        "economic trends",
+        "refinancing challenges",
+        "commercial property",
+        "vacancy rates",
+        "investment opportunities",
+        "environmental responsibility",
+        "community involvement",
+        "diversified portfolio",
+        "financial advice",
+        "office space",
+        "multifamily housing",
+        "location analysis",
+        "senior housing",
+        "retail investment",
+        "building upgrades",
+        "tenant relations",
+        "public real estate",
+        "equity securities",
+        "investment vehicles",
+        "strategic planning",
+        "financial performance",
+        "healthcare",
+        "finance",
+        "transportation & logistics",
+        "environmental services",
+        "renewables & environment",
+        "fund-raising",
+        "health care",
+        "health, wellness & fitness",
+        "hospital & health care"
+      ],
+      "organization_revenue_printed": "189.4M",
+      "organization_revenue": 189400000.0,
+      "industries": [
+        "real estate"
+      ],
+      "secondary_industries": [],
+      "snippets_loaded": true,
+      "industry_tag_id": "5567cd477369645401010000",
+      "industry_tag_hash": {
+        "real estate": "5567cd477369645401010000"
+      },
+      "retail_location_count": 0,
+      "raw_address": "0, Boston, LA, Denver, Paris, London, D\u00fcsseldorf, Hong Kong, Singapore, Sydney, Tokyo 000000, OO",
+      "street_address": "700 Great Western Highway",
+      "city": "Bungarribee",
+      "state": "New South Wales",
+      "postal_code": "2767",
+      "country": "Hong Kong",
+      "owned_by_organization_id": null,
+      "short_description": "All Elite Wrestling (AEW) is a professional wrestling promotion founded in 2019 by Tony Khan, with support from his father, Shahid Khan. AEW aims to provide a major alternative to WWE through innovative storytelling and a diverse roster. The company quickly gained traction with its inaugural event, Double or Nothing, in May 2019, and has since expanded its reach with weekly television shows and international events.\n\nAEW produces weekly programs such as AEW Dynamite and AEW Collision, along with major pay-per-view events like All In and All Out. The promotion hosts over 100 live events annually worldwide and features a talented roster that includes notable wrestlers like Chris Jericho, Kenny Omega, and Jon Moxley. AEW also integrates content from Ring of Honor and offers streaming options on platforms like Max, focusing on high-quality matches and engaging storylines. Its broadcasts reach audiences in over 140 countries and eight languages, appealing to wrestling fans globally.",
+      "suborganizations": [
+        {
+          "id": "65ed6654cebcff0007faa50d",
+          "name": "The Summit Birmingham",
+          "website_url": null
+        },
+        {
+          "id": "639330f0303f790001e2d43d",
+          "name": "The Summit Reno",
+          "website_url": "http://www.thesummitonline.com"
+        },
+        {
+          "id": "556d9e6c736964122a635a01",
+          "name": "sav Hospitality",
+          "website_url": "http://www.savhospitality.com"
+        },
+        {
+          "id": "56dbefa2f3e5bb7ec2002632",
+          "name": "AEW Patrimoine",
+          "website_url": "http://www.aewpatrimoine.com"
+        },
+        {
+          "id": "6468f9875515100001049433",
+          "name": "The Summit",
+          "website_url": "http://www.thesummitbirmingham.com"
+        },
+        {
+          "id": "66f996a8f00f4f0001050572",
+          "name": "AEW UK REIT PLC",
+          "website_url": "http://www.aewukreit.com"
+        }
+      ],
+      "num_suborganizations": 6,
+      "annual_revenue_printed": "189.4M",
+      "annual_revenue": 189400000.0,
+      "total_funding": 5226529000,
+      "total_funding_printed": "5.2B",
+      "latest_funding_round_date": "2025-07-01T00:00:00.000+00:00",
+      "latest_funding_stage": "Other",
+      "funding_events": [
+        {
+          "id": "68bee60910ecde000172c6ee",
+          "date": "2025-07-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "1.8B",
+          "currency": "$"
+        },
+        {
+          "id": "698696a9b4036b00011644d1",
+          "date": "2021-09-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "1.5B",
+          "currency": "$"
+        },
+        {
+          "id": "6a05fcdb9a563e0001667d18",
+          "date": "2021-07-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "590.4M",
+          "currency": "$"
+        },
+        {
+          "id": "69c3ccc523739800019bf3b9",
+          "date": "2019-05-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "307.9M",
+          "currency": "$"
+        },
+        {
+          "id": "6a05fcdb9a563e0001667d16",
+          "date": "2019-03-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "844.4M",
+          "currency": "$"
+        },
+        {
+          "id": "695e8a2f020dbb0001da16d0",
+          "date": "2018-09-01T00:00:00.000+00:00",
+          "news_url": null,
+          "type": "Other",
+          "investors": "",
+          "amount": "193.8M",
+          "currency": "$"
+        }
+      ],
+      "technology_names": [
+        "ARGUS Developer",
+        "Act-On",
+        "Amazon AWS",
+        "Amazon SES",
+        "Apache",
+        "Atlassian Cloud",
+        "Google Tag Manager",
+        "Instagram",
+        "LinkedIn Ads",
+        "Linkedin Marketing Solutions",
+        "Looker",
+        "Microsoft Excel",
+        "Microsoft Office 365",
+        "Microsoft Power Automate",
+        "Microsoft PowerPoint",
+        "Mobile Friendly",
+        "MySQL",
+        "Outlook",
+        "Power BI Documenter",
+        "Python",
+        "React",
+        "Remote",
+        "Route 53",
+        "Salesforce",
+        "Salesforce CRM Analytics",
+        "Shutterstock",
+        "Slack",
+        "SysTools VBA Password Recovery",
+        "Tableau",
+        "X (Twitter)"
+      ],
+      "current_technologies": [
+        {
+          "uid": "argus_developer",
+          "name": "ARGUS Developer",
+          "category": "Contruction Management Platform"
+        },
+        {
+          "uid": "act-on",
+          "name": "Act-On",
+          "category": "Marketing Automation"
+        },
+        {
+          "uid": "amazon_aws",
+          "name": "Amazon AWS",
+          "category": "Hosting"
+        },
+        {
+          "uid": "amazon_ses",
+          "name": "Amazon SES",
+          "category": "Email Delivery"
+        },
+        {
+          "uid": "apache",
+          "name": "Apache",
+          "category": "Load Balancers"
+        },
+        {
+          "uid": "atlassian_cloud",
+          "name": "Atlassian Cloud",
+          "category": "CMS"
+        },
+        {
+          "uid": "google_tag_manager",
+          "name": "Google Tag Manager",
+          "category": "Tag Management"
+        },
+        {
+          "uid": "instagram",
+          "name": "Instagram",
+          "category": "Social Sharing"
+        },
+        {
+          "uid": "linkedin_ads",
+          "name": "LinkedIn Ads",
+          "category": "Advertising Networks"
+        },
+        {
+          "uid": "linkedin_display_ads__formerly_bizo",
+          "name": "Linkedin Marketing Solutions",
+          "category": "Advertising Networks"
+        },
+        {
+          "uid": "looker",
+          "name": "Looker",
+          "category": "Analytics and Tracking"
+        },
+        {
+          "uid": "microsoft_excel",
+          "name": "Microsoft Excel",
+          "category": "Business Intelligence"
+        },
+        {
+          "uid": "office_365",
+          "name": "Microsoft Office 365",
+          "category": "Other"
+        },
+        {
+          "uid": "microsoft_power_automate",
+          "name": "Microsoft Power Automate",
+          "category": "Robotic Process Automation"
+        },
+        {
+          "uid": "microsoft_powerpoint",
+          "name": "Microsoft PowerPoint",
+          "category": "Web Presentation Tools"
+        },
+        {
+          "uid": "mobile_friendly",
+          "name": "Mobile Friendly",
+          "category": "Other"
+        },
+        {
+          "uid": "mysql",
+          "name": "MySQL",
+          "category": "Database"
+        },
+        {
+          "uid": "outlook",
+          "name": "Outlook",
+          "category": "Email Providers"
+        },
+        {
+          "uid": "power_bi_documenter",
+          "name": "Power BI Documenter",
+          "category": "Analytics and Tracking"
+        },
+        {
+          "uid": "python",
+          "name": "Python",
+          "category": "Frameworks and Programming Languages"
+        },
+        {
+          "uid": "react",
+          "name": "React",
+          "category": "CSS and JavaScript Libraries"
+        },
+        {
+          "uid": "remote",
+          "name": "Remote",
+          "category": "Other"
+        },
+        {
+          "uid": "route_53",
+          "name": "Route 53",
+          "category": "Domain Name Services"
+        },
+        {
+          "uid": "salesforce",
+          "name": "Salesforce",
+          "category": "Customer Relationship Management"
+        },
+        {
+          "uid": "salesforce crm analytics",
+          "name": "Salesforce CRM Analytics",
+          "category": "Analytics and Tracking"
+        },
+        {
+          "uid": "shutterstock",
+          "name": "Shutterstock",
+          "category": "Other"
+        },
+        {
+          "uid": "slack",
+          "name": "Slack",
+          "category": "Chats"
+        },
+        {
+          "uid": "systools_vba_password_recovery",
+          "name": "SysTools VBA Password Recovery",
+          "category": "Security"
+        },
+        {
+          "uid": "tableau",
+          "name": "Tableau",
+          "category": "Widgets"
+        },
+        {
+          "uid": "x_twitter",
+          "name": "X (Twitter)",
+          "category": "Social Media Marketing"
+        }
+      ],
+      "org_chart_root_people_ids": [
+        "60f8b13e2574440001310515"
+      ],
+      "org_chart_sector": null,
+      "org_chart_removed": null,
+      "org_chart_show_department_filter": null,
+      "organization_headcount_six_month_growth": 0.04619565217391304,
+      "organization_headcount_twelve_month_growth": 0.06353591160220995,
+      "organization_headcount_twenty_four_month_growth": -0.05172413793103448
+    },
+    "intent_strength": null,
+    "show_intent": false,
+    "email_domain_catchall": true,
+    "revealed_for_current_team": true,
+    "departments": [
+      "master_finance",
+      "master_legal"
+    ],
+    "subdepartments": [
+      "mergers_acquisitions",
+      "acquisitions"
+    ],
+    "functions": [],
+    "seniority": "director"
+  },
+  "status": "received"
+}
