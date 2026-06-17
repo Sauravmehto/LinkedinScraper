@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 
@@ -19,6 +20,7 @@ SAMPLE_PATH = DATA_DIR / "Sample_file.xlsx"
 INPUT_PATH = DATA_DIR / "user_input.xlsx"
 LEGACY_REPORT_PATH = DATA_DIR / "GTM_Final_report.xlsx"
 MAIN_SCRIPT = REPO_ROOT / "main.py"
+LOG_TAIL_CHARS = 12_000
 
 st.set_page_config(page_title="GTM Report Generator", page_icon="📊", layout="centered")
 
@@ -105,7 +107,17 @@ def _apollo_found_no_emails(log: str) -> bool:
     return bool(re.search(r"Contact enrichment done:\s*work_email=0\b", log))
 
 
-def _run_pipeline(report_path: Path) -> tuple[bool, str, int]:
+def _tail_log(text: str) -> str:
+    if len(text) <= LOG_TAIL_CHARS:
+        return text
+    return "…\n" + text[-LOG_TAIL_CHARS:]
+
+
+def _run_pipeline(
+    report_path: Path,
+    *,
+    on_log_update: Callable[[str], None] | None = None,
+) -> tuple[bool, str, int]:
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     root = str(REPO_ROOT)
@@ -133,6 +145,8 @@ def _run_pipeline(report_path: Path) -> tuple[bool, str, int]:
     assert proc.stdout is not None
     for line in proc.stdout:
         lines.append(line.rstrip("\n"))
+        if on_log_update:
+            on_log_update(_tail_log("\n".join(lines)))
     proc.wait()
     log = "\n".join(lines)
     row_count = _report_row_count(report_path) if report_path.exists() else 0
@@ -223,8 +237,18 @@ if run_clicked:
         st.session_state.report_key = ""
         st.session_state.report_row_count = 0
         st.session_state.running = True
-        with st.spinner("Running pipeline… this may take 5–15 minutes."):
-            ok, log, row_count = _run_pipeline(report_path)
+        st.session_state.last_log = ""
+
+        st.markdown("**Pipeline log**")
+        log_placeholder = st.empty()
+        log_placeholder.code("Starting pipeline…\n", language=None)
+
+        def _push_log(text: str) -> None:
+            log_placeholder.code(text or "Starting pipeline…\n", language=None)
+
+        with st.status("Running pipeline… this may take 5–15 minutes.", expanded=True):
+            ok, log, row_count = _run_pipeline(report_path, on_log_update=_push_log)
+
         st.session_state.running = False
         st.session_state.last_log = log
         st.session_state.report_row_count = row_count
@@ -235,8 +259,8 @@ if run_clicked:
         st.rerun()
 
 if st.session_state.last_log:
-    with st.expander("Pipeline log", expanded=not st.session_state.pipeline_ok):
-        st.code(st.session_state.last_log[-8000:], language=None)
+    st.markdown("**Pipeline log**")
+    st.code(_tail_log(st.session_state.last_log), language=None)
 
 if st.session_state.last_log and not st.session_state.pipeline_ok:
     if st.session_state.get("_show_apollo_warning"):
@@ -288,5 +312,3 @@ if (
         use_container_width=True,
         key=f"report_download_{st.session_state.report_key}",
     )
-
-st.caption("Tip: Close Excel if the report file is open before running.")
