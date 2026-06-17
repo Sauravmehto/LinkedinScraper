@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
-from gtm.linkedin_scraper.hubspot_sync.mapper import CompanyRow, contact_import_note, split_person_name
+from gtm.linkedin_scraper.hubspot_sync.mapper import CompanyRow, split_person_name
 from gtm.linkedin_scraper.people_discovery.candidate_extract import normalize_profile_url
 from gtm.linkedin_scraper.people_discovery.types import PersonCandidate
 
@@ -39,23 +40,12 @@ def _state_from_headquarters(headquarters: str) -> str:
     return text.split(",", 1)[1].strip()
 
 
-def _build_associated_note(
-    candidate: PersonCandidate,
-    company: CompanyRow | None,
-) -> str:
-    parts = [contact_import_note(candidate)]
-    if candidate.company_type and candidate.company_type != "UNKNOWN":
-        parts.append(f"Company type: {candidate.company_type}")
-    if candidate.notes:
-        parts.append(f"Notes: {candidate.notes}")
-    if company:
-        if company.country:
-            parts.append(f"Country: {company.country}")
-        if company.aum:
-            parts.append(f"AUM: {company.aum}")
-        if company.asset_type:
-            parts.append(f"Asset focus: {company.asset_type}")
-    return "\n".join(parts)[:65535]
+def _clean_last_name(last: str) -> str:
+    """Strip trailing numeric IDs from last names (e.g. 'White 27901039' -> 'White')."""
+    text = (last or "").strip()
+    if not text:
+        return ""
+    return re.sub(r"(\s+\d+)+$", "", text).strip()
 
 
 @dataclass(frozen=True)
@@ -72,6 +62,7 @@ def _value_for_header(
     defaults: ReportDefaults,
 ) -> Any:
     first, last = split_person_name(candidate.person_name)
+    last = _clean_last_name(last)
     title = (candidate.person_title or candidate.role_target or "").strip()
     email = (candidate.work_email or "").strip().lower()
     mobile = (candidate.direct_dial or candidate.hq_phone or "").strip()
@@ -82,6 +73,8 @@ def _value_for_header(
     city = (candidate.city or "").strip()
     state = (candidate.state or "").strip()
     country = (candidate.country or "").strip()
+    aum = ""
+    asset_focus = ""
     if company:
         if not city:
             city = _city_from_headquarters(company.headquarters)
@@ -89,6 +82,11 @@ def _value_for_header(
             state = _state_from_headquarters(company.headquarters)
         if not country:
             country = (company.country or "").strip()
+        aum = (company.aum or "").strip()
+        asset_focus = (company.asset_type or "").strip()
+
+    score_text = f"Score: {candidate.score} ({candidate.confidence})"
+    role_target = (candidate.role_target or "").strip()
 
     mapping: dict[str, Any] = {
         "first name": first,
@@ -106,10 +104,16 @@ def _value_for_header(
         "lifecycle stage": defaults.lifecycle_stage,
         "contact owner": defaults.owner_id,
         "communication owner": defaults.owner_id,
-        "associated note": _build_associated_note(candidate, company),
+        "associated note": "",
+        "country": country,
         "country/region": country,
+        "region": state,
+        "state/region": "",
         "city": city,
-        "state/region": state,
+        "score": score_text,
+        "role target": role_target,
+        "aum": aum,
+        "asset focus": asset_focus,
         "persona": "",
         "record id": "",
         "create date": "",
