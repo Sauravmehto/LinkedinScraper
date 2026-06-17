@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -27,23 +28,30 @@ for _k, _v in {
     "pipeline_ok": False,
     "file_uploaded": False,   # True only when user uploads in this session
     "last_upload_sig": "",
+    "report_key": "",  # changes after each successful run — busts download cache
 }.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
 
-def _upload_sig(name: str, size: int) -> str:
-    return f"{name}:{size}"
+def _upload_sig(name: str, data: bytes) -> str:
+    digest = hashlib.sha256(data).hexdigest()[:16]
+    return f"{name}:{len(data)}:{digest}"
 
 
-def _reset() -> None:
-    st.session_state.pipeline_ok = False
-    st.session_state.last_log = ""
+def _delete_report() -> None:
     if REPORT_PATH.exists():
         try:
             REPORT_PATH.unlink()
         except OSError:
             pass
+
+
+def _reset() -> None:
+    st.session_state.pipeline_ok = False
+    st.session_state.last_log = ""
+    st.session_state.report_key = ""
+    _delete_report()
 
 
 def _save(uploaded) -> None:
@@ -110,7 +118,8 @@ uploaded = st.file_uploader(
 )
 
 if uploaded is not None:
-    sig = _upload_sig(uploaded.name, uploaded.size)
+    raw = uploaded.getvalue()
+    sig = _upload_sig(uploaded.name, raw)
     if sig != st.session_state.last_upload_sig:
         try:
             _reset()
@@ -144,13 +153,17 @@ run_clicked = st.button(
 )
 
 if run_clicked:
-    st.session_state.running = True
+    _delete_report()
     st.session_state.pipeline_ok = False
+    st.session_state.report_key = ""
+    st.session_state.running = True
     with st.spinner("Running pipeline… this may take 5–15 minutes."):
         ok, log = _run_pipeline()
     st.session_state.running = False
     st.session_state.last_log = log
     st.session_state.pipeline_ok = ok
+    if ok and REPORT_PATH.exists():
+        st.session_state.report_key = str(REPORT_PATH.stat().st_mtime_ns)
     if ok:
         st.success("Pipeline finished. Download your report below.")
     else:
@@ -162,7 +175,7 @@ if st.session_state.last_log:
         st.code(st.session_state.last_log[-8000:], language=None)
 
 # Step 4 — download (only after successful run this session)
-if st.session_state.pipeline_ok and REPORT_PATH.exists():
+if st.session_state.pipeline_ok and REPORT_PATH.exists() and st.session_state.report_key:
     st.divider()
     st.subheader("Step 4 · Download your report")
     st.download_button(
@@ -172,6 +185,7 @@ if st.session_state.pipeline_ok and REPORT_PATH.exists():
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         type="primary",
         use_container_width=True,
+        key=f"report_download_{st.session_state.report_key}",
     )
 
 st.caption("Tip: Close Excel if `GTM_Final_report.xlsx` is open before running.")
