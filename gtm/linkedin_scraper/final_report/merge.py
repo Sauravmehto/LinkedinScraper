@@ -20,6 +20,8 @@ from gtm.linkedin_scraper.people_discovery.candidate_cap import (
 )
 from gtm.linkedin_scraper.people_discovery.types import PersonCandidate
 
+from .company_lookup import CompanyIndexes, build_company_indexes, lookup_company
+
 
 def _company_key(name: str) -> str:
     return (name or "").strip().casefold()
@@ -115,10 +117,13 @@ def merge_and_filter_people(
     max_per_company: int = DEFAULT_MAX_PER_COMPANY,
 ) -> tuple[list[PersonCandidate], dict[str, CompanyRow], FinalReportStats]:
     stats = FinalReportStats()
+    company_rows: list[CompanyRow] = []
     companies_by_name: dict[str, CompanyRow] = {}
     if companies_path and companies_path.exists():
-        for row in load_companies_from_workbook(companies_path, sheet=companies_sheet):
+        company_rows = load_companies_from_workbook(companies_path, sheet=companies_sheet)
+        for row in company_rows:
             companies_by_name[_company_key(row.name)] = row
+    company_indexes = build_company_indexes(company_rows)
 
     people = read_people_workbook(people_path, sheet=people_sheet)
     stats.rows_in = len(people)
@@ -140,7 +145,12 @@ def merge_and_filter_people(
             stats.skipped_no_phone += 1
             continue
 
-        company = companies_by_name.get(_company_key(raw.company_name))
+        company = lookup_company(
+            company_name=raw.company_name,
+            company_website=raw.company_website,
+            company_linkedin=raw.company_linkedin,
+            indexes=company_indexes,
+        )
         candidate = enrich_person(
             PersonCandidate(
                 company_name=raw.company_name,

@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 from gtm.linkedin_scraper.hubspot_sync.mapper import CompanyRow
 from gtm.linkedin_scraper.people_discovery.types import PersonCandidate
 
+from .company_lookup import build_company_indexes
 from .template_map import ReportDefaults, build_row_values, resolve_company_for_candidate
 
 
@@ -40,8 +41,14 @@ def write_final_report(
     if ws.max_row > 1:
         ws.delete_rows(2, ws.max_row - 1)
 
+    company_indexes = build_company_indexes(list(companies_by_name.values()))
+
     for candidate in candidates:
-        company = resolve_company_for_candidate(candidate, companies_by_name)
+        company = resolve_company_for_candidate(
+            candidate,
+            companies_by_name,
+            indexes=company_indexes,
+        )
         row_values = build_row_values(
             headers,
             candidate,
