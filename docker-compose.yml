@@ -1,0 +1,18 @@
+# Local development — docker compose up --build
+# App: http://localhost:8501
+
+services:
+  gtm:
+    build:
+      context: .
+      dockerfile: docker/streamlit.Dockerfile
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      PORT: "8501"
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+    restart: unless-stopped
