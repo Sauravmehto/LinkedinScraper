@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
@@ -16,13 +18,33 @@ import streamlit as st
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
+OUTPUT_DIR = REPO_ROOT / "output"
 SAMPLE_PATH = DATA_DIR / "Sample_file.xlsx"
 INPUT_PATH = DATA_DIR / "user_input.xlsx"
+FINAL_REPORT_PATH = OUTPUT_DIR / "final_report.xlsx"
 LEGACY_REPORT_PATH = DATA_DIR / "GTM_Final_report.xlsx"
 MAIN_SCRIPT = REPO_ROOT / "main.py"
 LOG_TAIL_CHARS = 12_000
+DEBUG_LOG_PATH = REPO_ROOT / "output" / "debug-5e088b.log"
+DEBUG_SESSION_ID = "5e088b"
+MAX_SAMPLE_COMPANIES = 5
+CACHE_DIR = REPO_ROOT / "output" / "cache" / "people"
 
-st.set_page_config(page_title="GTM Report Generator", page_icon="📊", layout="centered")
+st.set_page_config(page_title="GTM Report Generator", page_icon="📊", layout="wide")
+
+st.markdown(
+    """
+    <style>
+    /* Remove Streamlit centered column cap (default max-width: 736px) */
+    .stMainBlockContainer,
+    .block-container,
+    .st-emotion-cache-1w723zb {
+        max-width: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ── session state defaults ────────────────────────────────────────────────────
 for _k, _v in {
@@ -47,13 +69,37 @@ def _upload_sig(name: str, data: bytes) -> str:
 
 
 def _report_path_for_upload(filename: str) -> Path:
-    stem = Path(filename).stem or "report"
-    safe = re.sub(r'[<>:"/\\|?*]', "_", stem).strip() or "report"
-    return DATA_DIR / f"{safe}_Final_report.xlsx"
+    return FINAL_REPORT_PATH
 
 
 def _report_download_name_for_upload(filename: str) -> str:
-    return _report_path_for_upload(filename).name
+    stem = Path(filename).stem or "report"
+    safe = re.sub(r'[<>:"/\\|?*]', "_", stem).strip() or "report"
+    return f"{safe}_final_report.xlsx"
+
+
+def _debug_log(
+    *,
+    hypothesis_id: str,
+    location: str,
+    message: str,
+    data: dict,
+    run_id: str = "pre-fix",
+) -> None:
+    payload = {
+        "sessionId": DEBUG_SESSION_ID,
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with DEBUG_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 def _current_report_path() -> Path | None:
@@ -62,7 +108,7 @@ def _current_report_path() -> Path | None:
 
 
 def _delete_report(path: Path | None = None) -> None:
-    targets = {LEGACY_REPORT_PATH}
+    targets = {LEGACY_REPORT_PATH, FINAL_REPORT_PATH}
     if path is not None:
         targets.add(path)
     current = _current_report_path()
@@ -84,6 +130,20 @@ def _reset() -> None:
     _delete_report()
 
 
+def _clear_people_cache() -> int:
+    if not CACHE_DIR.exists():
+        return 0
+    removed = 0
+    for path in CACHE_DIR.rglob("*"):
+        if path.is_file():
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                pass
+    return removed
+
+
 def _save(uploaded) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if uploaded.name.lower().endswith(".csv"):
@@ -91,6 +151,21 @@ def _save(uploaded) -> None:
         df.to_excel(INPUT_PATH, index=False, sheet_name="Sheet1")
     else:
         INPUT_PATH.write_bytes(uploaded.getvalue())
+
+
+def _company_count_from_upload(raw: bytes, filename: str) -> int:
+    if filename.lower().endswith(".csv"):
+        df = pd.read_csv(BytesIO(raw), encoding="utf-8")
+    else:
+        df = pd.read_excel(BytesIO(raw))
+    if df.empty:
+        return 0
+    cols = {str(c).strip().casefold(): c for c in df.columns}
+    if "company name" in cols:
+        col = cols["company name"]
+    else:
+        col = df.columns[0]
+    return int(df[col].astype(str).str.strip().ne("").sum())
 
 
 def _report_row_count(path: Path) -> int:
@@ -120,8 +195,36 @@ def _run_pipeline(
 ) -> tuple[bool, str, int]:
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
+    env.setdefault("PYTHONUTF8", "1")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
     root = str(REPO_ROOT)
     env["PYTHONPATH"] = root if not env.get("PYTHONPATH") else f"{root}{os.pathsep}{env['PYTHONPATH']}"
+    playwright_ver = ""
+    try:
+        import importlib.metadata as _md
+
+        playwright_ver = _md.version("playwright")
+    except Exception:
+        playwright_ver = "unknown"
+    pw_path = env.get("PLAYWRIGHT_BROWSERS_PATH", "")
+    pw_entries: list[str] = []
+    if pw_path and Path(pw_path).exists():
+        pw_entries = sorted([p.name for p in Path(pw_path).glob("chromium*")])[:8]
+    # region agent log
+    _debug_log(
+        hypothesis_id="H1_H2",
+        location="app/streamlit_app.py:_run_pipeline:start",
+        message="Pipeline subprocess starting",
+        data={
+            "python": sys.version.split()[0],
+            "playwright_version": playwright_ver,
+            "playwright_browsers_path": pw_path,
+            "playwright_path_exists": bool(pw_path and Path(pw_path).exists()),
+            "chromium_entries": pw_entries,
+            "report_path": str(report_path),
+        },
+    )
+    # endregion
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -130,7 +233,7 @@ def _run_pipeline(
             "--input",
             str(INPUT_PATH),
             "--final-report-output",
-            str(report_path),
+            str(FINAL_REPORT_PATH),
             "--no-final-report-require-email",
         ],
         cwd=REPO_ROOT,
@@ -145,12 +248,34 @@ def _run_pipeline(
     assert proc.stdout is not None
     for line in proc.stdout:
         lines.append(line.rstrip("\n"))
+        if "BrowserType.launch:" in line or "Looks like Playwright was just updated" in line:
+            # region agent log
+            _debug_log(
+                hypothesis_id="H3",
+                location="app/streamlit_app.py:_run_pipeline:stdout",
+                message="Playwright launch error observed in pipeline output",
+                data={"line": line.rstrip("\n")},
+            )
+            # endregion
         if on_log_update:
             on_log_update(_tail_log("\n".join(lines)))
     proc.wait()
     log = "\n".join(lines)
     row_count = _report_row_count(report_path) if report_path.exists() else 0
     ok = proc.returncode == 0 and report_path.exists() and row_count > 0
+    # region agent log
+    _debug_log(
+        hypothesis_id="H1_H3",
+        location="app/streamlit_app.py:_run_pipeline:end",
+        message="Pipeline subprocess finished",
+        data={
+            "returncode": proc.returncode,
+            "report_exists": report_path.exists(),
+            "row_count": row_count,
+            "ok": ok,
+        },
+    )
+    # endregion
     return ok, log, row_count
 
 
@@ -188,9 +313,47 @@ uploaded = st.file_uploader(
 if uploaded is not None:
     raw = uploaded.getvalue()
     sig = _upload_sig(uploaded.name, raw)
+    company_rows = -1
+    try:
+        company_rows = _company_count_from_upload(raw, uploaded.name)
+    except Exception:
+        company_rows = -1
+    # region agent log
+    _debug_log(
+        hypothesis_id="H4",
+        location="app/streamlit_app.py:upload",
+        message="Upload received",
+        data={
+            "filename": uploaded.name,
+            "size": uploaded.size,
+            "company_rows": company_rows,
+            "over_limit_5": company_rows > 5,
+        },
+    )
+    # endregion
     if sig != st.session_state.last_upload_sig:
         try:
             _reset()
+            if company_rows > MAX_SAMPLE_COMPANIES:
+                st.error(
+                    f"Sample upload supports up to {MAX_SAMPLE_COMPANIES} companies only. "
+                    f"Found: {company_rows}. Please upload 5 or fewer."
+                )
+                st.session_state.file_uploaded = False
+                st.session_state.last_upload_sig = ""
+                st.session_state.uploaded_filename = ""
+                st.session_state.report_path = ""
+                st.session_state.report_download_name = ""
+                st.stop()
+            removed_cache = _clear_people_cache()
+            # region agent log
+            _debug_log(
+                hypothesis_id="H2",
+                location="app/streamlit_app.py:upload:cache_clear",
+                message="Cleared people cache on new upload",
+                data={"removed_files": removed_cache, "cache_dir": str(CACHE_DIR)},
+            )
+            # endregion
             _save(uploaded)
             report_path = _report_path_for_upload(uploaded.name)
             st.session_state.file_uploaded = True
@@ -203,7 +366,10 @@ if uploaded is not None:
             st.session_state.file_uploaded = False
     if st.session_state.file_uploaded:
         out_name = st.session_state.report_download_name or _report_download_name_for_upload(uploaded.name)
-        st.success(f"File ready: **{uploaded.name}** → report will be saved as **{out_name}**")
+        st.success(
+            f"File ready: **{uploaded.name}** → download as **{out_name}** "
+            f"(pipeline writes `output/final_report.xlsx`)"
+        )
 else:
     if st.session_state.last_upload_sig:
         st.session_state.file_uploaded = False
@@ -219,6 +385,19 @@ st.divider()
 st.subheader("Step 3 · Run pipeline")
 if not st.session_state.file_uploaded:
     st.info("Upload a company file above to enable **Run Pipeline**.")
+else:
+    try:
+        from gtm.linkedin_scraper.config import load_fallback_config, missing_enrichment_keys
+
+        _missing_keys = missing_enrichment_keys(load_fallback_config())
+        if _missing_keys:
+            st.warning(
+                "Missing API keys (fewer people/emails): "
+                + ", ".join(_missing_keys)
+                + ". Add them in `.env` or Render Environment."
+            )
+    except Exception:
+        pass
 
 run_clicked = st.button(
     "Run Pipeline",

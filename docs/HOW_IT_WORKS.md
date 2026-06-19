@@ -36,7 +36,7 @@ flowchart TD
     D -->|LinkedIn found| G
     D -->|Not found| E[Step 3: Browser for JS sites]
     E -->|LinkedIn found| G
-    E -->|Not found| K[Step 4-9 fallbacks]
+    E -->|Not found| K[Steps 7-9 fallbacks]
     K -->|Found| G
     K -->|Not found| F[Row left empty]
     G --> H[Validate LinkedIn links]
@@ -55,17 +55,18 @@ flowchart TD
 | **Step 1** | Opens the company homepage and looks for a LinkedIn link in the normal page. | Fast |
 | **Step 2** | If Step 1 fails: looks harder on the homepage, then checks pages like About Us and Contact. | Medium |
 | **Step 3** | If Step 2 fails: opens the site in a hidden Chrome browser so JavaScript (icons, footers) can load, then looks again. | Slowest core step |
-| **Step 4** | Searches Bing for the best LinkedIn company URL. | Fast fallback |
-| **Step 5** | Uses Brave Search API (if key configured). | Fast fallback |
-| **Step 6** | Uses DuckDuckGo as backup search. | Fast fallback |
-| **Step 7** | Tries extra same-site pages like team/people/leadership. | Medium fallback |
+| Step | What it does | Speed |
+|------|----------------|-------|
+| **Step 7** | Tries same-site team/leadership/people pages for a LinkedIn link. | Medium fallback |
 | **Step 8** | Uses Tavily API (if key configured). | Medium fallback |
 | **Step 9** | Uses Apollo API as last resort (if key configured). | Last resort |
+
+Steps 4–6 (Bing, Brave, DuckDuckGo search) exist in code but are **off by default** — use `--fallback-steps 4,5,6,...` only if you need them.
 
 - The tool **stops as soon as it finds** a LinkedIn URL.
 - If all enabled steps fail, that row stays without a Profile URL.
 
-**When to use fallbacks:** add `--enable-fallbacks` to run Steps 4-9 only for unresolved rows after Step 3.
+**When to use fallbacks:** add `--enable-fallbacks` to run Steps 7-9 for unresolved rows after Step 3 (default order: `7,8,9`).
 
 ---
 
@@ -73,7 +74,7 @@ flowchart TD
 
 | Approach | Faster for this project? | More accurate? | Good fit for Excel row-by-row? |
 |----------|--------------------------|----------------|-------------------------------|
-| **Our stack: httpx + BeautifulSoup + Playwright + optional fallbacks (Step 4-9)** | Already good | **Yes** — browser + search fallback handles hard cases | **Yes** |
+| **Our stack: httpx + BeautifulSoup + Playwright + optional fallbacks (Steps 7-9)** | Already good | **Yes** — browser + API fallbacks handle hard cases | **Yes** |
 | httpx + Parsel | Slightly, on parsing only | Same as BS4 for finding links | Optional tweak, not needed |
 | Scrapy | For huge crawls, not small Excel jobs | Same static pages | Overkill here |
 | Requests + BeautifulSoup | Similar to what we have | Same | Lateral move, not better |
