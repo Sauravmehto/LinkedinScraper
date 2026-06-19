@@ -91,7 +91,7 @@ GTM/
 │   ├── io_utils.py                  # Excel read/write, sheet detection
 │   ├── scrape.py                    # Scrape orchestration
 │   ├── scrapers/                    # Steps 1–3 (httpx, deep links, Playwright)
-│   ├── fallbacks/                   # Steps 4–9 fallback discovery
+│   ├── fallbacks/                   # Steps 7–9 default (4–6 optional)
 │   ├── people_discovery/            # Decision-maker discovery pipeline
 │   └── validators/
 │       ├── linkedin_urls.py         # Profile URL syntax + HTTP check
@@ -107,7 +107,7 @@ GTM/
 |--------|----------|---------|
 | `Official Website` | Input (required) | Company website to scrape |
 | `Profile URL` | Scrape | LinkedIn company/profile URL found |
-| `Scrape Method` | Scrape | `step1`, `step2`, `step3`, or fallback tags `step4_bing`..`step9_apollo` |
+| `Scrape Method` | Scrape | `step1`, `step2`, `step3`, or fallback tags `step7_team`..`step9_apollo` |
 | `URL Valid (syntax)` | Validate LinkedIn | `yes` / `no` |
 | `URL Status (live)` | Validate LinkedIn | `OK`, `OK (redirect)`, `404`, `blocked`, `timeout` |
 | `Website Status` | Validate websites | HTTP status of Official Website |

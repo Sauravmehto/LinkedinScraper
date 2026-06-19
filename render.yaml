@@ -1,15 +1,14 @@
 # Render Blueprint — https://dashboard.render.com → New → Blueprint
-# Or create Web Service manually with the build/start commands below.
+# Docker runtime recommended (Playwright + Chromium pre-installed in base image).
 
 services:
   - type: web
     name: gtm-report-generator
-    runtime: python
+    runtime: docker
+    dockerfilePath: ./docker/streamlit.Dockerfile
+    dockerContext: .
     plan: standard
     region: oregon
-    # Do NOT use "playwright install --with-deps" on Render — it needs root (su fails).
-    buildCommand: pip install -r requirements.txt && PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/.playwright-browsers python -m playwright install chromium
-    startCommand: bash scripts/render_start.sh
     healthCheckPath: /_stcore/health
     envVars:
       - key: PYTHONPATH
@@ -17,7 +16,7 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/project/src/.playwright-browsers
+        value: /ms-playwright
       - key: APOLLO_API_KEY
         sync: false
       - key: SERPER_API_KEY
@@ -25,4 +24,8 @@ services:
       - key: BRAVE_API_KEY
         sync: false
       - key: TAVILY_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
         sync: false

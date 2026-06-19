@@ -1,7 +1,7 @@
 # Use docker/streamlit.Dockerfile via docker compose locally.
 # Render: set dockerfilePath to ./docker/streamlit.Dockerfile (runtime: docker).
 
-FROM mcr.microsoft.com/playwright/python:v1.49.1-noble
+FROM mcr.microsoft.com/playwright/python:v1.60.0-noble
 
 WORKDIR /app
 
