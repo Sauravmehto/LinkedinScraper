@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
@@ -11,6 +12,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from gtm.linkedin_scraper.config import load_fallback_config, resolve_default_people_sources
 from gtm.linkedin_scraper.io_utils import (
+    OUTPUT_DIR,
     PROFILE_HEADER,
     WEBSITE_HEADER,
     find_column_index,
@@ -37,6 +39,8 @@ from .role_map import expand_roles
 from .scoring import confidence_from_score, score_candidate
 from .search_sources import run_free_search_staged, run_search_sources, run_serper_fallback
 from .team_pages import extract_team_linkedin_profiles, extract_team_people
+from .linkedin_profile_enrich import enrich_linkedin_job_titles
+from .title_clean import clean_candidates_job_titles
 from .team_pages_playwright import shutdown_playwright
 from .types import CompanyContext, DiscoveryStats, PersonCandidate, RawProfileHit, RoleTarget
 
@@ -326,6 +330,9 @@ class DiscoverPeopleParams:
     enable_contact_enrichment: bool = False
     apollo_contact_delay: float = 0.5
     enrich_all_contacts: bool = False
+    enable_linkedin_title_enrichment: bool = True
+    linkedin_profile_delay: float = 2.0
+    enable_title_clean: bool = True
 
 
 def _name_from_profile_url(url: str) -> str:
@@ -853,8 +860,47 @@ def run_people_discovery(
         )
         log(
             f"Contact columns: work_email={enrich_stats.with_work_email} "
+            f"personal_email={enrich_stats.with_personal_email} "
             f"direct_dial={enrich_stats.with_direct_dial} "
             f"hq_phone={enrich_stats.with_hq_phone}"
         )
+
+    if params.enable_linkedin_title_enrichment:
+        cfg = load_fallback_config()
+        discovered, title_stats = enrich_linkedin_job_titles(
+            discovered,
+            api_key=cfg.anthropic_api_key,
+            enable_anthropic=params.enable_anthropic,
+            profile_delay=params.linkedin_profile_delay,
+            timeout=float(params.timeout),
+            log=log,
+        )
+        log(
+            f"Job titles: fetched={title_stats.profiles_fetched} "
+            f"updated={title_stats.titles_updated} "
+            f"verified={title_stats.anthropic_verified}"
+        )
+
+    if params.enable_title_clean:
+        cfg = load_fallback_config()
+        discovered, clean_stats = clean_candidates_job_titles(
+            discovered,
+            api_key=cfg.anthropic_api_key,
+            enable_anthropic=params.enable_anthropic,
+            timeout=float(params.timeout),
+            log=log,
+        )
+        log(
+            f"Title clean: updated={clean_stats.cleaned} "
+            f"unknown={clean_stats.unknown}"
+        )
+        if clean_stats.results:
+            json_path = OUTPUT_DIR / "title_clean_results.json"
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+            json_path.write_text(
+                json.dumps(clean_stats.results, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            log(f"Title clean JSON: {json_path}")
 
     return discovered, stats

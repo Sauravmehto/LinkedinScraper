@@ -40,6 +40,7 @@ class PersonCandidate:
     notes: str = ""
     company_website: str = ""
     work_email: str = ""
+    personal_email: str = ""
     email_status: str = ""
     email_confidence: str = ""
     direct_dial: str = ""

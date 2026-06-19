@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
+from gtm.linkedin_scraper.scrapers.linkedin_extract import make_soup
 
 from gtm.linkedin_scraper.scrapers.http_client import fetch_url
 
@@ -112,7 +112,7 @@ def extract_team_people(
         )
         if not content:
             continue
-        soup = BeautifulSoup(content, "lxml")
+        soup = make_soup(content)
         blocks = soup.find_all(["article", "li", "div", "section"])
         for block in blocks:
             text = " ".join(block.stripped_strings)
@@ -172,7 +172,7 @@ def extract_team_linkedin_profiles(
         )
         if not content:
             continue
-        soup = BeautifulSoup(content, "lxml")
+        soup = make_soup(content)
         for anchor in soup.find_all("a", href=True):
             href = anchor.get("href", "")
             if "linkedin.com/in/" not in href.lower():

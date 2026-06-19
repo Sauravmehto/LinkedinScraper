@@ -17,7 +17,9 @@ ApolloMatchCache = dict[str, ApolloContact]
 def _needs_apollo_enrichment(candidate: PersonCandidate, *, only_missing: bool) -> bool:
     if not only_missing:
         return True
-    missing_email = not (candidate.work_email or "").strip()
+    missing_email = not (
+        (candidate.work_email or "").strip() or (candidate.personal_email or "").strip()
+    )
     missing_phone = not (
         (candidate.direct_dial or "").strip() or (candidate.hq_phone or "").strip()
     )
@@ -30,11 +32,15 @@ def _merge_contact(
     contact: ApolloContact,
 ) -> PersonCandidate:
     work_email = (candidate.work_email or "").strip() or contact.work_email
+    personal_email = (candidate.personal_email or "").strip() or contact.personal_email
     email_status = candidate.email_status
     email_confidence = candidate.email_confidence
     if contact.work_email and not (candidate.work_email or "").strip():
         email_status = contact.email_status or "from_apollo"
         email_confidence = contact.email_confidence or "from_apollo"
+    elif contact.personal_email and not (candidate.personal_email or "").strip():
+        email_status = contact.email_status or "from_apollo_personal"
+        email_confidence = contact.email_confidence or "from_apollo_personal"
     direct = (candidate.direct_dial or "").strip() or contact.direct_dial
     hq = (candidate.hq_phone or "").strip() or contact.hq_phone
     phone_source = candidate.phone_source
@@ -60,6 +66,7 @@ def _merge_contact(
         confidence=candidate.confidence,
         notes=candidate.notes,
         work_email=work_email,
+        personal_email=personal_email,
         email_status=email_status,
         email_confidence=email_confidence,
         direct_dial=direct,
@@ -81,7 +88,8 @@ def enrich_person_via_apollo(
     timeout: float,
     cache: ApolloMatchCache,
     only_missing: bool = True,
-    reveal_phone_number: bool = False,
+    reveal_phone_number: bool = True,
+    reveal_personal_emails: bool = True,
     match_delay: float = 0.5,
 ) -> tuple[PersonCandidate, bool]:
     """
@@ -105,6 +113,7 @@ def enrich_person_via_apollo(
         api_key=api_key,
         timeout=timeout,
         reveal_phone_number=reveal_phone_number,
+        reveal_personal_emails=reveal_personal_emails,
         domain=dom or None,
     )
     if match_delay > 0:
@@ -125,6 +134,8 @@ def enrich_list_via_apollo(
     api_key: str,
     timeout: float,
     only_missing: bool = True,
+    reveal_phone_number: bool = True,
+    reveal_personal_emails: bool = True,
     match_delay: float = 0.5,
     log: Callable[[str], None] | None = None,
 ) -> tuple[list[PersonCandidate], int, ApolloMatchCache]:
@@ -139,6 +150,8 @@ def enrich_list_via_apollo(
             timeout=timeout,
             cache=cache,
             only_missing=only_missing,
+            reveal_phone_number=reveal_phone_number,
+            reveal_personal_emails=reveal_personal_emails,
             match_delay=match_delay,
         )
         if called:

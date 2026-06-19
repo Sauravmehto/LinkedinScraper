@@ -21,6 +21,7 @@ _PREFERRED_HQ_TYPES = frozenset({"work_hq", "work", "office", "hq"})
 @dataclass(frozen=True)
 class ApolloContact:
     work_email: str = ""
+    personal_email: str = ""
     email_status: str = ""
     email_confidence: str = ""
     direct_dial: str = ""
@@ -91,13 +92,31 @@ def parse_apollo_phones(person: dict) -> tuple[str, str]:
     return direct, hq
 
 
+def _extract_personal_email(person: dict) -> str:
+    direct = str(person.get("personal_email") or "").strip()
+    if direct and "@" in direct:
+        return direct
+    emails = person.get("personal_emails")
+    if isinstance(emails, list):
+        for item in emails:
+            if isinstance(item, str) and "@" in item:
+                return item.strip()
+            if isinstance(item, dict):
+                for key in ("email", "address", "value"):
+                    val = str(item.get(key) or "").strip()
+                    if val and "@" in val:
+                        return val
+    return ""
+
+
 def parse_apollo_contact(person: dict) -> ApolloContact:
     """Extract email and phones from an Apollo people/match person object."""
     email = str(person.get("email") or "").strip()
+    personal_email = _extract_personal_email(person)
     direct, hq = parse_apollo_phones(person)
     phone_source = "apollo" if direct or hq else ""
-    email_status = "from_apollo" if email else ""
-    email_confidence = "from_apollo" if email else ""
+    email_status = "from_apollo" if email else ("from_apollo_personal" if personal_email else "")
+    email_confidence = "from_apollo" if email else ("from_apollo_personal" if personal_email else "")
     title = str(person.get("title") or person.get("headline") or "").strip()
     name = str(person.get("name") or "").strip()
     city = str(person.get("city") or "").strip()
@@ -113,6 +132,7 @@ def parse_apollo_contact(person: dict) -> ApolloContact:
             country = str(org.get("country") or "").strip()
     return ApolloContact(
         work_email=email,
+        personal_email=personal_email,
         email_status=email_status,
         email_confidence=email_confidence,
         direct_dial=direct,

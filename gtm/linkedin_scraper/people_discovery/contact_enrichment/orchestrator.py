@@ -16,6 +16,7 @@ class EnrichmentStats:
     candidates_out: int = 0
     apollo_calls: int = 0
     with_work_email: int = 0
+    with_personal_email: int = 0
     with_direct_dial: int = 0
     with_hq_phone: int = 0
     by_company: dict[str, int] = field(default_factory=dict)
@@ -23,6 +24,9 @@ class EnrichmentStats:
     def summarize(self, candidates: list[PersonCandidate]) -> None:
         self.candidates_out = len(candidates)
         self.with_work_email = sum(1 for c in candidates if (c.work_email or "").strip())
+        self.with_personal_email = sum(
+            1 for c in candidates if (c.personal_email or "").strip()
+        )
         self.with_direct_dial = sum(1 for c in candidates if (c.direct_dial or "").strip())
         self.with_hq_phone = sum(1 for c in candidates if (c.hq_phone or "").strip())
 
@@ -57,6 +61,7 @@ def _attach_company_websites(
                 confidence=c.confidence,
                 notes=c.notes,
                 work_email=c.work_email,
+                personal_email=c.personal_email,
                 email_status=c.email_status,
                 email_confidence=c.email_confidence,
                 direct_dial=c.direct_dial,
@@ -80,6 +85,8 @@ def enrich_candidates(
     timeout: float = 15.0,
     only_missing: bool = True,
     apollo_delay: float = 0.5,
+    reveal_phone_number: bool = True,
+    reveal_personal_emails: bool = True,
     websites_by_company: dict[str, str] | None = None,
     company_hq_by_name: dict[str, str] | None = None,
     log: Callable[[str], None] | None = None,
@@ -106,6 +113,8 @@ def enrich_candidates(
         api_key=api_key,
         timeout=timeout,
         only_missing=only_missing,
+        reveal_phone_number=reveal_phone_number,
+        reveal_personal_emails=reveal_personal_emails,
         match_delay=apollo_delay,
         log=_log,
     )
@@ -123,6 +132,7 @@ def enrich_candidates(
     stats.summarize(enriched)
     _log(
         f"Contact enrichment done: work_email={stats.with_work_email} "
+        f"personal_email={stats.with_personal_email} "
         f"direct_dial={stats.with_direct_dial} hq_phone={stats.with_hq_phone} "
         f"apollo_calls={stats.apollo_calls}"
     )

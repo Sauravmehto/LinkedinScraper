@@ -274,6 +274,7 @@ def _with_phone_fields(
         confidence=candidate.confidence,
         notes=candidate.notes,
         work_email=candidate.work_email,
+        personal_email=candidate.personal_email,
         email_status=candidate.email_status,
         email_confidence=candidate.email_confidence,
         direct_dial=direct_dial if direct_dial is not None else candidate.direct_dial,
