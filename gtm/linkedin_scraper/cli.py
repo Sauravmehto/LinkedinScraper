@@ -9,7 +9,18 @@ from typing import Optional, Sequence
 
 from openpyxl import load_workbook
 
-from gtm.linkedin_scraper.config import load_fallback_config
+from gtm.linkedin_scraper.config import (
+    DEFAULT_FALLBACK_STEPS,
+    MAX_MODE_FREE_QUERIES_PER_COMPANY,
+    MAX_MODE_MIN_BEFORE_APOLLO,
+    MAX_MODE_MIN_BEFORE_SERPER,
+    MAX_MODE_MIN_BEFORE_TAVILY,
+    MAX_MODE_SERPER_QUERIES,
+    MAX_MODE_TAVILY_QUERIES,
+    RECOMMENDED_PEOPLE_SOURCES,
+    load_fallback_config,
+    log_recommended_stack_status,
+)
 from gtm.linkedin_scraper.io_utils import (
     DEFAULT_SAMPLE_XLSX,
     OUTPUT_DIR,
@@ -34,7 +45,7 @@ from gtm.linkedin_scraper.final_report import (
     build_final_report,
     resolve_template_path,
 )
-from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT
+from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT, HUBSPOT_DATA_TEMPLATE
 from gtm.linkedin_scraper.people_discovery.candidate_cap import (
     DEFAULT_MAX_PER_COMPANY,
     cap_candidates_per_company,
@@ -48,7 +59,11 @@ from gtm.linkedin_scraper.validators.official_websites import run_validate_websi
 
 
 def log(msg: str) -> None:
-    print(msg, flush=True)
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        print(msg.encode(encoding, errors="replace").decode(encoding, errors="replace"), flush=True)
 
 
 def resolve_output(input_path: Path, output_path: Optional[Path]) -> Path:
@@ -116,12 +131,12 @@ def add_scrape_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--enable-fallbacks",
         action="store_true",
-        help="Enable fallback Steps 4-9 after Step 3 misses (default: off)",
+        help="Enable fallback Steps 7-9 after Step 3 misses (default: off)",
     )
     parser.add_argument(
         "--fallback-steps",
-        default="4,5,6,7,8,9",
-        help="Fallback steps order (default: 4,5,6,7,8,9)",
+        default="7,8,9",
+        help="Fallback steps order (default: 7,8,9 — team pages, Tavily, Apollo)",
     )
 
 
@@ -270,7 +285,7 @@ def add_people_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--enable-contact-enrichment",
         action="store_true",
-        help="After people discovery, enrich work email and phones via Apollo people/match",
+        help="After people discovery, enrich work/personal email and phones via Apollo people/match",
     )
     parser.add_argument(
         "--apollo-contact-delay",
@@ -282,6 +297,24 @@ def add_people_args(parser: argparse.ArgumentParser) -> None:
         "--enrich-all-contacts",
         action="store_true",
         help="Re-call Apollo for contacts even when email or phone is already set",
+    )
+    parser.add_argument(
+        "--enable-linkedin-title-enrichment",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Scrape LinkedIn /in/ profiles for clean job titles (default: on)",
+    )
+    parser.add_argument(
+        "--linkedin-profile-delay",
+        type=float,
+        default=2.0,
+        help="Seconds between LinkedIn profile fetches (default: 2.0)",
+    )
+    parser.add_argument(
+        "--enable-title-clean",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Clean Job Title snippets (name/company/LinkedIn removal; default: on)",
     )
 
 
@@ -347,7 +380,7 @@ def add_enrich_contacts_args(parser: argparse.ArgumentParser) -> None:
 def parse_fallback_steps(value: str) -> tuple[int, ...]:
     parts = [p.strip() for p in value.split(",") if p.strip()]
     if not parts:
-        return (4, 5, 6, 7, 8, 9)
+        return DEFAULT_FALLBACK_STEPS
     return tuple(int(p) for p in parts)
 
 
@@ -373,6 +406,13 @@ def discover_people_params_from_args(args: argparse.Namespace) -> DiscoverPeople
     enable_contacts = bool(getattr(args, "enable_contact_enrichment", False))
     apollo_delay = float(getattr(args, "apollo_contact_delay", 0.5) or 0.5)
     enrich_all_contacts = bool(getattr(args, "enrich_all_contacts", False))
+    enable_linkedin_titles = bool(
+        getattr(args, "enable_linkedin_title_enrichment", True)
+    )
+    linkedin_profile_delay = float(
+        getattr(args, "linkedin_profile_delay", 2.0) or 2.0
+    )
+    enable_title_clean = bool(getattr(args, "enable_title_clean", True))
 
     enable_anthropic = not getattr(args, "no_anthropic", False) and (
         getattr(args, "enable_enrichment", False) or bool(cfg.anthropic_api_key)
@@ -380,6 +420,9 @@ def discover_people_params_from_args(args: argparse.Namespace) -> DiscoverPeople
 
     if max_mode:
         pw_default = True
+        people_sources = resolve_people_sources_arg(args.people_sources)
+        if people_sources is None:
+            people_sources = RECOMMENDED_PEOPLE_SOURCES
         return DiscoverPeopleParams(
             sheet=args.sheet,
             company_type_column=args.company_type_column,
@@ -388,16 +431,16 @@ def discover_people_params_from_args(args: argparse.Namespace) -> DiscoverPeople
             apollo_sufficient_hits=5,
             min_people_before_serper=args.min_people_before_serper
             if args.min_people_before_serper is not None
-            else 5,
+            else MAX_MODE_MIN_BEFORE_SERPER,
             min_people_before_apollo=args.min_people_before_apollo
             if args.min_people_before_apollo is not None
-            else 5,
-            min_people_before_tavily=3,
-            tavily_fallback_max_queries=8,
-            serper_fallback_max_queries=8,
-            max_queries_per_company=24,
+            else MAX_MODE_MIN_BEFORE_APOLLO,
+            min_people_before_tavily=MAX_MODE_MIN_BEFORE_TAVILY,
+            tavily_fallback_max_queries=MAX_MODE_TAVILY_QUERIES,
+            serper_fallback_max_queries=MAX_MODE_SERPER_QUERIES,
+            max_queries_per_company=MAX_MODE_FREE_QUERIES_PER_COMPANY,
             skip_ddg_if_bing_quality=9999,
-            people_sources=("bing", "serper", "apollo"),
+            people_sources=people_sources,
             timeout=args.timeout,
             workers=args.workers,
             limit=args.limit,
@@ -416,6 +459,9 @@ def discover_people_params_from_args(args: argparse.Namespace) -> DiscoverPeople
             enable_contact_enrichment=enable_contacts,
             apollo_contact_delay=apollo_delay,
             enrich_all_contacts=enrich_all_contacts,
+            enable_linkedin_title_enrichment=enable_linkedin_titles,
+            linkedin_profile_delay=linkedin_profile_delay,
+            enable_title_clean=enable_title_clean,
         )
 
     min_serper = (
@@ -454,6 +500,9 @@ def discover_people_params_from_args(args: argparse.Namespace) -> DiscoverPeople
         enable_contact_enrichment=enable_contacts,
         apollo_contact_delay=apollo_delay,
         enrich_all_contacts=enrich_all_contacts,
+        enable_linkedin_title_enrichment=enable_linkedin_titles,
+        linkedin_profile_delay=linkedin_profile_delay,
+        enable_title_clean=enable_title_clean,
     )
 
 
@@ -735,6 +784,9 @@ def cmd_run_full_intel(args: argparse.Namespace) -> int:
     log(f"Company output: {output_path}" + (" (dry-run, not saved)" if args.dry_run else ""))
     if args.enable_people_discovery:
         log(f"People output: {people_output}" + (" (dry-run, not saved)" if args.dry_run else ""))
+        log("")
+        log_recommended_stack_status(log)
+        log("")
 
     wb = prepare_workbook(input_path, output_path, dry_run=args.dry_run)
     steps = parse_steps(args.steps)
@@ -836,6 +888,7 @@ def cmd_run_full_intel(args: argparse.Namespace) -> int:
                     lifecycle_stage=lifecycle_stage,
                     owner_id=owner_id,
                     max_per_company=max_per_co,
+                    use_anthropic=getattr(args, "anthropic_final_report", True),
                     dry_run=False,
                     log=log,
                 )
@@ -949,13 +1002,13 @@ def cmd_sync_hubspot(args: argparse.Namespace) -> int:
 
 
 def add_build_final_report_args(parser: argparse.ArgumentParser) -> None:
-    from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT, GTM_FINAL_TEMPLATE
+    from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT, HUBSPOT_DATA_TEMPLATE
 
     parser.add_argument(
         "--template",
         type=Path,
         default=None,
-        help=f"Report template (default: {GTM_FINAL_TEMPLATE})",
+        help=f"Report template (default: {HUBSPOT_DATA_TEMPLATE})",
     )
     parser.add_argument(
         "--companies",
@@ -1024,6 +1077,12 @@ def add_build_final_report_args(parser: argparse.ArgumentParser) -> None:
         help="Contact owner ID (default: HUBSPOT_CONTACT_OWNER_ID from .env)",
     )
     parser.add_argument(
+        "--anthropic-final-report",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use Claude to clean/format final report (default: on when API key set)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print stats without writing final_report.xlsx",
@@ -1081,6 +1140,7 @@ def cmd_build_final_report(args: argparse.Namespace) -> int:
             max_per_company=int(
                 getattr(args, "max_per_company", DEFAULT_MAX_PER_COMPANY) or DEFAULT_MAX_PER_COMPANY
             ),
+            use_anthropic=getattr(args, "anthropic_final_report", True),
             dry_run=args.dry_run,
             log=log,
         )
@@ -1219,19 +1279,25 @@ def add_full_intel_report_args(parser: argparse.ArgumentParser) -> None:
         "--build-final-report",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="After run, merge into data/GTM_Final_report.xlsx (default: on)",
+        help="After run, merge into output/final_report.xlsx (default: on)",
     )
     parser.add_argument(
         "--final-report-template",
         type=Path,
         default=None,
-        help="Report template (default: data/GTM_Final_File.xlsx)",
+        help=f"Report template (default: {HUBSPOT_DATA_TEMPLATE})",
     )
     parser.add_argument(
         "--final-report-output",
         type=Path,
         default=None,
-        help="Final report path (default: data/GTM_Final_report.xlsx)",
+        help=f"Final report path (default: {GTM_FINAL_REPORT_OUTPUT})",
+    )
+    parser.add_argument(
+        "--anthropic-final-report",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use Claude to clean/format final report rows (default: on when API key set)",
     )
     parser.add_argument(
         "--final-report-min-score",
@@ -1346,15 +1412,23 @@ def build_parser() -> argparse.ArgumentParser:
     _register_full_intel_parser(
         sub,
         name="run-gtm",
-        help_text="One command: companies + top 15 employees + GTM_Final_report.xlsx",
+        help_text="One command: companies + top 15 employees + output/final_report.xlsx",
         input_default=DEFAULT_SAMPLE_XLSX,
         command_defaults={
             "enable_people_discovery": True,
             "enable_contact_enrichment": True,
+            "enable_linkedin_title_enrichment": True,
+            "enable_title_clean": True,
+            "enable_enrichment": True,
+            "enable_playwright_people": True,
+            "people_sources": "bing,serper,apollo",
             "coverage_mode": "max",
             "people_output": OUTPUT_DIR / "decision_makers.xlsx",
+            "final_report_output": OUTPUT_DIR / "final_report.xlsx",
+            "anthropic_final_report": True,
             "force": True,
             "enable_fallbacks": True,
+            "fallback_steps": "7,8,9",
             "steps": "1,2,3",
         },
     )

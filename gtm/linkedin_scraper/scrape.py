@@ -10,7 +10,7 @@ from typing import Callable, Optional
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from gtm.linkedin_scraper.config import load_fallback_config
+from gtm.linkedin_scraper.config import DEFAULT_FALLBACK_STEPS, load_fallback_config
 from gtm.linkedin_scraper.fallbacks.manager import FallbackStats, run_fallback_waterfall
 from gtm.linkedin_scraper.io_utils import (
     PROFILE_HEADER,
@@ -91,7 +91,7 @@ def run_scrape(
     force: bool = False,
     skip_filled: bool = True,
     enable_fallbacks: bool = False,
-    fallback_steps: tuple[int, ...] = (4, 5, 6, 7, 8, 9),
+    fallback_steps: tuple[int, ...] = DEFAULT_FALLBACK_STEPS,
     limit: int = 0,
     log: LogFn = print,
 ) -> tuple[Optional[Worksheet], ScrapeStats]:

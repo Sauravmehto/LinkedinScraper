@@ -3,10 +3,25 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+# Company LinkedIn fallbacks after Step 3 (team pages → Tavily → Apollo).
+DEFAULT_FALLBACK_STEPS: tuple[int, ...] = (7, 8, 9)
+
+# People discovery sources for run-gtm / max coverage (Bing + paid APIs).
+RECOMMENDED_PEOPLE_SOURCES: tuple[str, ...] = ("bing", "serper", "apollo")
+
+# Max mode: run Serper/Apollo/Tavily unless this many scored profiles already exist.
+MAX_MODE_MIN_BEFORE_SERPER = 8
+MAX_MODE_MIN_BEFORE_APOLLO = 8
+MAX_MODE_MIN_BEFORE_TAVILY = 5
+MAX_MODE_SERPER_QUERIES = 8
+MAX_MODE_TAVILY_QUERIES = 8
+MAX_MODE_FREE_QUERIES_PER_COMPANY = 24
 
 
 @dataclass(frozen=True)
@@ -84,11 +99,42 @@ def _normalize_hubspot_token_env(raw: str | None) -> str | None:
 
 
 def resolve_default_people_sources() -> tuple[str, ...]:
-    """Free search first in pipeline; Serper/Apollo are gated fallbacks; Tavily is separate."""
+    """Bing + configured paid sources (Serper, Apollo). Tavily is a separate fallback."""
     cfg = load_fallback_config()
-    sources: list[str] = ["bing", "ddg"]
+    sources: list[str] = ["bing"]
     if cfg.serper_api_key:
         sources.append("serper")
     if cfg.apollo_api_key:
         sources.append("apollo")
     return tuple(sources)
+
+
+def missing_enrichment_keys(cfg: FallbackConfig | None = None) -> list[str]:
+    """Return env var names for recommended API keys that are not configured."""
+    c = cfg or load_fallback_config()
+    checks: tuple[tuple[str | None, str], ...] = (
+        (c.serper_api_key, "SERPER_API_KEY"),
+        (c.tavily_api_key, "TAVILY_API_KEY"),
+        (c.apollo_api_key, "APOLLO_API_KEY"),
+        (c.anthropic_api_key, "ANTHROPIC_API_KEY"),
+        (c.firecrawl_api_key, "FIRECRAWL_API_KEY"),
+    )
+    return [label for value, label in checks if not value]
+
+
+def log_recommended_stack_status(log: Callable[[str], None] = print) -> None:
+    """Log the active discovery stack and warn about missing API keys."""
+    log("--- Recommended discovery stack ---")
+    log(
+        "Company: Steps 1-3 (httpx + Playwright) -> fallbacks "
+        f"{','.join(map(str, DEFAULT_FALLBACK_STEPS))} (team pages, Tavily, Apollo)"
+    )
+    log(
+        "People: team pages -> Firecrawl -> Playwright -> Bing -> Serper -> "
+        "Apollo -> Tavily -> Anthropic -> Apollo contact enrichment"
+    )
+    missing = missing_enrichment_keys()
+    if missing:
+        log(f"Missing API keys (fewer people/emails): {', '.join(missing)}")
+    else:
+        log("All recommended API keys are configured.")
