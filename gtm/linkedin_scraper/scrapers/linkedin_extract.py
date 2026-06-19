@@ -10,7 +10,7 @@ import re
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, FeatureNotFound
 
 # Prefer /company/ pages; also allow /in/ and /school/
 LINKEDIN_RE = re.compile(
@@ -49,6 +49,14 @@ def pick_best_linkedin(urls: list[str]) -> Optional[str]:
     return unique[0]
 
 
+def make_soup(html: str) -> BeautifulSoup:
+    """Parse HTML; fall back to html.parser when lxml is not installed."""
+    try:
+        return BeautifulSoup(html, "lxml")
+    except FeatureNotFound:
+        return BeautifulSoup(html, "html.parser")
+
+
 def extract_from_html(html: str) -> Optional[str]:
     """Regex scan of raw HTML (scripts, JSON, comments)."""
     return pick_best_linkedin(LINKEDIN_RE.findall(html))
@@ -73,7 +81,7 @@ def extract_from_soup(soup: BeautifulSoup, base_url: str) -> Optional[str]:
 
 def extract_linkedin_from_page(html: str, base_url: str) -> Optional[str]:
     """Step 1 parser: anchor tags first, then full-page regex fallback."""
-    soup = BeautifulSoup(html, "lxml")
+    soup = make_soup(html)
     found = extract_from_soup(soup, base_url)
     if found:
         return found
@@ -91,7 +99,7 @@ def extract_deep_from_page(html: str, page_url: str) -> Optional[str]:
     """
     Step 2 parser: all anchor hrefs, href= attributes in markup, then full HTML regex.
     """
-    soup = BeautifulSoup(html, "lxml")
+    soup = make_soup(html)
     candidates: list[str] = []
 
     for tag in soup.find_all("a", href=True):

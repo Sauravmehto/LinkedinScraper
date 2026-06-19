@@ -11,6 +11,10 @@ second sequential pass after Steps 1–2 (see scrape_linkedin_profiles.py).
 
 from __future__ import annotations
 
+import json
+import os
+import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
@@ -25,6 +29,25 @@ if TYPE_CHECKING:
 _pw: Optional["Playwright"] = None
 _browser: Optional["Browser"] = None
 _context: Optional["BrowserContext"] = None
+_DEBUG_LOG_PATH = Path("output/debug-5e088b.log")
+_DEBUG_SESSION_ID = "5e088b"
+
+
+def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    payload = {
+        "sessionId": _DEBUG_SESSION_ID,
+        "runId": "pre-fix",
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 def _playwright_missing_result() -> ScrapeResult:
@@ -32,6 +55,14 @@ def _playwright_missing_result() -> ScrapeResult:
         profile_url=None,
         method="not_found",
         note="step3: playwright not installed — run: python -m pipenv run playwright install chromium",
+    )
+
+
+def _playwright_launch_failed_result(err: Exception) -> ScrapeResult:
+    return ScrapeResult(
+        profile_url=None,
+        method="not_found",
+        note=f"step3: playwright launch failed ({type(err).__name__})",
     )
 
 
@@ -46,7 +77,33 @@ def _ensure_context() -> tuple[Optional["BrowserContext"], Optional[ScrapeResult
         return _context, None
 
     _pw = sync_playwright().start()
-    _browser = _pw.chromium.launch(headless=True)
+    try:
+        _browser = _pw.chromium.launch(headless=True)
+    except Exception as exc:
+        # region agent log
+        _debug_log(
+            hypothesis_id="H1_H2_H3",
+            location="gtm/linkedin_scraper/scrapers/step3_playwright.py:_ensure_context",
+            message="Chromium launch failed",
+            data={
+                "error": str(exc),
+                "playwright_browsers_path": os.getenv("PLAYWRIGHT_BROWSERS_PATH", ""),
+                "path_exists": bool(
+                    os.getenv("PLAYWRIGHT_BROWSERS_PATH")
+                    and Path(os.getenv("PLAYWRIGHT_BROWSERS_PATH", "")).exists()
+                ),
+            },
+        )
+        # endregion
+        try:
+            if _pw is not None:
+                _pw.stop()
+        except Exception:
+            pass
+        _pw = None
+        _browser = None
+        _context = None
+        return None, _playwright_launch_failed_result(exc)
     _context = _browser.new_context(
         user_agent=USER_AGENT,
         locale="en-US",
@@ -124,7 +181,14 @@ def _run_locked(base_url: str, timeout: float) -> ScrapeResult:
 
 def run(base_url: str, timeout: float = 15.0) -> ScrapeResult:
     """Render company site in Chromium and extract LinkedIn links (main thread only)."""
-    return _run_locked(base_url, timeout)
+    try:
+        return _run_locked(base_url, timeout)
+    except Exception as exc:
+        return ScrapeResult(
+            profile_url=None,
+            method="not_found",
+            note=f"step3: error ({type(exc).__name__})",
+        )
 
 
 def shutdown_browser() -> None:
