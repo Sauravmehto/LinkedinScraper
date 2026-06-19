@@ -95,7 +95,9 @@ def contact_properties(
     extra_props: dict[str, str] | None = None,
 ) -> dict[str, str]:
     first, last = split_person_name(candidate.person_name)
-    email = (candidate.work_email or "").strip().lower()
+    email = (
+        (candidate.work_email or candidate.personal_email or "").strip().lower()
+    )
     phone = (candidate.direct_dial or candidate.hq_phone or "").strip()
     props: dict[str, str] = {}
     if email:

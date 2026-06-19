@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
+from gtm.linkedin_scraper.config import load_fallback_config
 from gtm.linkedin_scraper.io_utils import DATA_DIR, OUTPUT_DIR
 
 from gtm.linkedin_scraper.people_discovery.candidate_cap import (
@@ -12,27 +13,30 @@ from gtm.linkedin_scraper.people_discovery.candidate_cap import (
     cap_candidates_per_company,
 )
 
+from .anthropic_report import build_final_rows
+from .hubspot_data_template import HUBSPOT_DATA_TEMPLATE, load_template_headers
 from .merge import FinalReportStats, merge_and_filter_people
-from .template_map import ReportDefaults
-from .writer import write_final_report
+from .writer import write_hubspot_data_report
 
 DEFAULT_TEMPLATE = OUTPUT_DIR / "Hubspot CD 20052026 1.xlsx"
 FALLBACK_TEMPLATE = DATA_DIR / "Hubspot CD 20052026 1.xlsx"
 GTM_FINAL_TEMPLATE = DATA_DIR / "GTM_Final_File.xlsx"
 DEFAULT_OUTPUT = OUTPUT_DIR / "final_report.xlsx"
-GTM_FINAL_REPORT_OUTPUT = DATA_DIR / "GTM_Final_report.xlsx"
+GTM_FINAL_REPORT_OUTPUT = DEFAULT_OUTPUT
 
 
 def resolve_template_path(path: Path | None) -> Path:
     if path is not None:
         return path
+    if HUBSPOT_DATA_TEMPLATE.exists():
+        return HUBSPOT_DATA_TEMPLATE
     if GTM_FINAL_TEMPLATE.exists():
         return GTM_FINAL_TEMPLATE
     if DEFAULT_TEMPLATE.exists():
         return DEFAULT_TEMPLATE
     if FALLBACK_TEMPLATE.exists():
         return FALLBACK_TEMPLATE
-    return GTM_FINAL_TEMPLATE
+    return HUBSPOT_DATA_TEMPLATE
 
 
 def build_final_report(
@@ -50,6 +54,7 @@ def build_final_report(
     lifecycle_stage: str = "lead",
     owner_id: str = "",
     max_per_company: int = DEFAULT_MAX_PER_COMPANY,
+    use_anthropic: bool = True,
     dry_run: bool = False,
     log: Callable[[str], None] | None = None,
 ) -> FinalReportStats:
@@ -66,32 +71,39 @@ def build_final_report(
         max_per_company=max_per_company,
     )
 
-    defaults = ReportDefaults(
-        lead_status=lead_status,
-        lifecycle_stage=lifecycle_stage,
-        owner_id=owner_id,
-    )
-
-    if not dry_run:
-        write_final_report(
-            template_path,
-            output_path,
-            candidates,
-            companies_by_name,
-            defaults=defaults,
-            dry_run=False,
+    if dry_run:
+        _log(
+            f"Final report: rows_in={stats.rows_in} after_filter={stats.after_filter} "
+            f"written={stats.written} (dry run)"
         )
+        return stats
+
+    headers = load_template_headers(template_path)
+    cfg = load_fallback_config()
+    anthropic_key = cfg.anthropic_api_key if use_anthropic else None
+    if use_anthropic and not anthropic_key:
+        _log("Anthropic final report: skipped (no ANTHROPIC_API_KEY); using deterministic mapping")
+
+    row_dicts, method = build_final_rows(
+        candidates,
+        companies_by_name,
+        headers=headers,
+        api_key=anthropic_key,
+        model=cfg.anthropic_model or "claude-sonnet-4-5-20250929",
+        use_anthropic=bool(use_anthropic and anthropic_key),
+        log=_log,
+    )
+    stats.written = len(row_dicts)
+
+    write_hubspot_data_report(template_path, output_path, headers, row_dicts)
 
     _log(
-        f"Final report: rows_in={stats.rows_in} after_filter={stats.after_filter} "
+        f"Final report ({method}): rows_in={stats.rows_in} after_filter={stats.after_filter} "
         f"written={stats.written} "
         f"skipped(linkedin={stats.skipped_no_linkedin} score={stats.skipped_low_score} "
         f"email={stats.skipped_no_email} phone={stats.skipped_no_phone}) "
         f"deduped(linkedin={stats.deduped_by_linkedin} email={stats.deduped_by_email})"
     )
-    if dry_run:
-        _log("Dry run — workbook not written")
-    else:
-        _log(f"Saved {output_path}")
+    _log(f"Saved {output_path}")
 
     return stats

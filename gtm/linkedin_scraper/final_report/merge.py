@@ -53,6 +53,7 @@ def enrich_person(
         confidence=candidate.confidence,
         notes=candidate.notes,
         work_email=candidate.work_email,
+        personal_email=candidate.personal_email,
         email_status=candidate.email_status,
         email_confidence=candidate.email_confidence,
         direct_dial=candidate.direct_dial,
@@ -137,7 +138,7 @@ def merge_and_filter_people(
         if raw.score < min_score:
             stats.skipped_low_score += 1
             continue
-        email = (raw.work_email or "").strip()
+        email = (raw.work_email or raw.personal_email or "").strip()
         if require_email and not email:
             stats.skipped_no_email += 1
             continue
@@ -166,7 +167,8 @@ def merge_and_filter_people(
                 score=raw.score,
                 confidence=raw.confidence,
                 notes=raw.notes,
-                work_email=email,
+                work_email=raw.work_email,
+                personal_email=raw.personal_email,
                 email_status=raw.email_status,
                 email_confidence=raw.email_confidence,
                 direct_dial=raw.direct_dial,
@@ -196,7 +198,9 @@ def merge_and_filter_people(
 
     by_email, removed_em = _dedupe_by_key(
         by_linkedin,
-        lambda c: (c.work_email or "").strip().lower(),
+        lambda c: (
+            (c.work_email or c.personal_email or "").strip().lower()
+        ),
     )
     stats.deduped_by_email = removed_em
 

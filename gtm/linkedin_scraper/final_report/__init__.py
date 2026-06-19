@@ -5,6 +5,7 @@ from .build import (
     DEFAULT_TEMPLATE,
     GTM_FINAL_REPORT_OUTPUT,
     GTM_FINAL_TEMPLATE,
+    HUBSPOT_DATA_TEMPLATE,
     build_final_report,
     resolve_template_path,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "DEFAULT_TEMPLATE",
     "GTM_FINAL_REPORT_OUTPUT",
     "GTM_FINAL_TEMPLATE",
+    "HUBSPOT_DATA_TEMPLATE",
     "FinalReportStats",
     "build_final_report",
     "resolve_template_path",

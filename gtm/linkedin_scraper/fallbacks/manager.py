@@ -1,4 +1,4 @@
-"""Fallback waterfall manager (Steps 4-9)."""
+"""Fallback waterfall manager (Steps 7-9 default; 4-6 optional via --fallback-steps)."""
 
 from __future__ import annotations
 

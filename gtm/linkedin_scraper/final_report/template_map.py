@@ -97,7 +97,9 @@ def _value_for_header(
     person_li = normalize_profile_url(candidate.linkedin_in_url)
     last = _clean_last_name(last, person_li)
     title = (candidate.person_title or candidate.role_target or "").strip()
-    email = (candidate.work_email or "").strip().lower()
+    email = (
+        (candidate.work_email or candidate.personal_email or "").strip().lower()
+    )
     mobile = (candidate.direct_dial or candidate.hq_phone or "").strip()
     phone_fallback = mobile
     company_li = normalize_profile_url(candidate.company_linkedin)
