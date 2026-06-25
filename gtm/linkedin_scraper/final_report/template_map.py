@@ -104,6 +104,10 @@ def _value_for_header(
     phone_fallback = mobile
     company_li = normalize_profile_url(candidate.company_linkedin)
     website = _normalize_website(candidate.company_website)
+    if not website and company:
+        website = _normalize_website(company.website)
+    if not company_li and company:
+        company_li = normalize_profile_url(company.company_linkedin)
     city = (candidate.city or "").strip()
     state = (candidate.state or "").strip()
     country = (candidate.country or "").strip()
@@ -190,3 +194,85 @@ def resolve_company_for_candidate(
         company_linkedin=candidate.company_linkedin,
         indexes=idx,
     )
+
+
+def detect_template_format(headers: list[str]) -> str:
+    """Return 'hubspot_data' or 'gtm_final' based on template column headers."""
+    normalized = {_normalize_header(h) for h in headers if str(h or "").strip()}
+    if "company domain name" in normalized or "number of employees" in normalized:
+        return "hubspot_data"
+    if (
+        "website url" in normalized
+        or "role target" in normalized
+        or "asset focus" in normalized
+    ):
+        return "gtm_final"
+    if "first name" in normalized and "linkedin account" in normalized:
+        return "hubspot_data"
+    return "gtm_final"
+
+
+def build_row_dict(
+    headers: list[str],
+    candidate: PersonCandidate,
+    *,
+    company: CompanyRow | None = None,
+    defaults: ReportDefaults | None = None,
+) -> dict[str, Any]:
+    """One row dict keyed by exact template header strings."""
+    values = build_row_values(headers, candidate, company=company, defaults=defaults)
+    return {
+        str(header): values[idx] if idx < len(values) else ""
+        for idx, header in enumerate(headers)
+    }
+
+
+def build_row_dicts(
+    candidates: list[PersonCandidate],
+    companies_by_name: dict[str, CompanyRow],
+    headers: list[str],
+    *,
+    defaults: ReportDefaults | None = None,
+) -> list[dict[str, Any]]:
+    idx = build_company_indexes(list(companies_by_name.values()))
+    out: list[dict[str, Any]] = []
+    for candidate in candidates:
+        company = resolve_company_for_candidate(
+            candidate, companies_by_name, indexes=idx
+        )
+        out.append(
+            build_row_dict(
+                headers,
+                candidate,
+                company=company,
+                defaults=defaults,
+            )
+        )
+    return out
+
+
+def build_template_source_payloads(
+    candidates: list[PersonCandidate],
+    companies_by_name: dict[str, CompanyRow],
+    headers: list[str],
+    *,
+    defaults: ReportDefaults | None = None,
+) -> list[dict[str, Any]]:
+    """Wide payloads for Claude using template column names."""
+    idx = build_company_indexes(list(companies_by_name.values()))
+    out: list[dict[str, Any]] = []
+    for candidate in candidates:
+        company = resolve_company_for_candidate(
+            candidate, companies_by_name, indexes=idx
+        )
+        row = build_row_dict(
+            headers,
+            candidate,
+            company=company,
+            defaults=defaults,
+        )
+        row["_score"] = candidate.score
+        row["_confidence"] = candidate.confidence
+        row["_snippet"] = candidate.snippet
+        out.append(row)
+    return out

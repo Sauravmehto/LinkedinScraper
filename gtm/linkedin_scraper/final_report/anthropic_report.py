@@ -1,4 +1,7 @@
-"""Claude-powered cleanup and formatting for Hubspot Data.xlsx final report."""
+"""LLM-powered cleanup and formatting for final report Excel output.
+
+Uses the unified llm_fallback chain: Anthropic -> Gemini -> Groq -> Mistral -> Cloudflare.
+"""
 
 from __future__ import annotations
 
@@ -7,17 +10,20 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-import httpx
-
-from gtm.linkedin_scraper.scrapers.http_client import DEFAULT_HEADERS
+from gtm.linkedin_scraper.llm_fallback import llm_call_from_config
 
 from .hubspot_data_template import (
     build_hubspot_rows,
     build_source_payloads,
     normalize_row_dict,
 )
+from .template_map import (
+    ReportDefaults,
+    build_row_dicts,
+    build_template_source_payloads,
+    detect_template_format,
+)
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
 
 
@@ -40,77 +46,80 @@ def _parse_json_array(text: str) -> list[dict]:
     return []
 
 
-def format_hubspot_rows_with_anthropic(
+def _system_prompt(headers: list[str], template_format: str) -> str:
+    header_list = ", ".join(headers)
+    base = (
+        "You format B2B contact rows for CRM import. "
+        f'Output ONLY valid JSON: {{"rows": [ ... ]}} where each object uses EXACTLY '
+        f"these keys (no extras): {header_list}. "
+        "Clean First Name and Last Name (proper case, remove LinkedIn slug junk). "
+        "Normalize Job Title to role only (no person name, company, or LinkedIn). "
+        "Keep Email lowercase when present. "
+        "Do not invent emails or phone numbers. "
+        'Drop rows with keep=false (add keep boolean); default keep=true for valid executives.'
+    )
+    if template_format == "hubspot_data":
+        return (
+            base
+            + " Fill City and State/Region from _company_headquarters when empty. "
+            "Company Domain Name should be hostname only (no https). "
+            "Industry from _asset_focus when Industry is empty."
+        )
+    return (
+        base
+        + " Preserve Score, Role target, Source, AUM, and Asset focus when present. "
+        "Website URL should include https:// when a domain is known."
+    )
+
+
+def format_rows_with_llm(
     *,
     source_rows: list[dict[str, Any]],
+    fallback_rows: list[dict[str, Any]],
     headers: list[str],
-    api_key: str,
-    model: str = DEFAULT_MODEL,
-    timeout: float = 60.0,
-    batch_size: int = 25,
+    template_format: str,
+    cfg,
+    timeout: float = 90.0,
+    batch_size: int = 20,
     log: Callable[[str], None] | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Send merged rows to Claude; return cleaned rows matching template headers.
-    Falls back to stripping underscore fields from source rows on API failure.
+    Send merged rows to an LLM (fallback chain); return cleaned rows matching template headers.
+    On failure uses pre-built deterministic fallback rows for that batch.
     """
     _log = log or (lambda _m: None)
-    if not api_key or not source_rows:
-        return [_strip_internal(r, headers) for r in source_rows]
+    if not source_rows:
+        return fallback_rows or [_strip_internal(r, headers) for r in source_rows]
 
     cleaned: list[dict[str, Any]] = []
     chunk_size = max(1, batch_size)
-    header_list = ", ".join(headers)
+    system = _system_prompt(headers, template_format)
 
     for start in range(0, len(source_rows), chunk_size):
-        chunk = source_rows[start : start + chunk_size]
-        system = (
-            "You format B2B contact rows for HubSpot import. "
-            f"Output ONLY valid JSON: {{\"rows\": [ ... ]}} where each object uses EXACTLY "
-            f"these keys (no extras): {header_list}. "
-            "Clean First Name and Last Name (proper case, remove LinkedIn slug junk). "
-            "Normalize Job Title. Keep Email lowercase. "
-            "Fill City and State/Region from _company_headquarters when empty. "
-            "Company Domain Name should be hostname only (no https). "
-            "Industry from _asset_focus when Industry is empty. "
-            "Drop rows with keep=false (add keep boolean); default keep=true for valid executives. "
-            "Do not invent emails or phone numbers."
-        )
+        end = start + chunk_size
+        chunk = source_rows[start:end]
+        chunk_fallback = fallback_rows[start:end]
         user_content = json.dumps(
             {"template_columns": headers, "contacts": chunk},
             ensure_ascii=False,
         )
-        body = {
-            "model": model,
-            "max_tokens": 8192,
-            "system": system,
-            "messages": [{"role": "user", "content": user_content}],
-        }
-        headers_http = {
-            **DEFAULT_HEADERS,
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }
-        try:
-            with httpx.Client(timeout=timeout, headers=headers_http) as client:
-                resp = client.post(ANTHROPIC_API_URL, json=body)
-                resp.raise_for_status()
-                data = resp.json()
-        except (httpx.HTTPError, TimeoutError, OSError, ValueError, KeyError) as exc:
-            _log(f"Anthropic final report batch failed ({type(exc).__name__}); using deterministic rows")
-            cleaned.extend(_strip_internal(r, headers) for r in chunk)
+        text = llm_call_from_config(
+            cfg,
+            system=system,
+            user_content=user_content,
+            max_tokens=8192,
+            timeout=timeout,
+            log=_log,
+        )
+        if not text:
+            _log("LLM final report batch failed; using deterministic rows")
+            cleaned.extend(chunk_fallback)
             continue
 
-        text_parts = [
-            b.get("text", "")
-            for b in (data.get("content") or [])
-            if isinstance(b, dict) and b.get("type") == "text"
-        ]
-        parsed = _parse_json_array("\n".join(text_parts))
+        parsed = _parse_json_array(text)
         if not parsed:
-            _log("Anthropic final report: empty JSON; using deterministic rows for batch")
-            cleaned.extend(_strip_internal(r, headers) for r in chunk)
+            _log("LLM final report: empty JSON; using deterministic rows for batch")
+            cleaned.extend(chunk_fallback)
             continue
 
         for row in parsed:
@@ -119,11 +128,46 @@ def format_hubspot_rows_with_anthropic(
             cleaned.append(normalize_row_dict(row, headers))
 
     if not cleaned:
-        _log("Anthropic final report: no rows returned; using deterministic mapping")
-        return [_strip_internal(r, headers) for r in source_rows]
+        _log("LLM final report: no rows returned; using deterministic mapping")
+        return fallback_rows
 
-    _log(f"Anthropic final report: {len(cleaned)} row(s) after cleanup")
+    _log(f"LLM final report: {len(cleaned)} row(s) after cleanup")
     return cleaned
+
+
+def format_rows_with_anthropic(
+    *,
+    source_rows: list[dict[str, Any]],
+    fallback_rows: list[dict[str, Any]],
+    headers: list[str],
+    template_format: str,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    timeout: float = 90.0,
+    batch_size: int = 20,
+    log: Callable[[str], None] | None = None,
+) -> list[dict[str, Any]]:
+    """Backwards-compatible wrapper — uses Anthropic-only path (no fallback chain)."""
+    from gtm.linkedin_scraper.config import FallbackConfig
+
+    cfg = FallbackConfig(
+        brave_api_key=None,
+        serper_api_key=None,
+        tavily_api_key=None,
+        apollo_api_key=None,
+        anthropic_api_key=api_key,
+        anthropic_model=model,
+    )
+    return format_rows_with_llm(
+        source_rows=source_rows,
+        fallback_rows=fallback_rows,
+        headers=headers,
+        template_format=template_format,
+        cfg=cfg,
+        timeout=timeout,
+        batch_size=batch_size,
+        log=log,
+    )
 
 
 def _strip_internal(row: dict[str, Any], headers: list[str]) -> dict[str, Any]:
@@ -131,26 +175,103 @@ def _strip_internal(row: dict[str, Any], headers: list[str]) -> dict[str, Any]:
     return normalize_row_dict(base, headers)
 
 
+def _deterministic_rows(
+    candidates: list,
+    companies_by_name: dict,
+    headers: list[str],
+    template_format: str,
+    defaults: ReportDefaults | None,
+) -> list[dict[str, Any]]:
+    if template_format == "gtm_final":
+        return build_row_dicts(
+            candidates,
+            companies_by_name,
+            headers,
+            defaults=defaults,
+        )
+    rows = build_hubspot_rows(candidates, companies_by_name)
+    return [normalize_row_dict(r, headers) for r in rows]
+
+
+def _source_payloads(
+    candidates: list,
+    companies_by_name: dict,
+    headers: list[str],
+    template_format: str,
+    defaults: ReportDefaults | None,
+) -> list[dict[str, Any]]:
+    if template_format == "gtm_final":
+        return build_template_source_payloads(
+            candidates,
+            companies_by_name,
+            headers,
+            defaults=defaults,
+        )
+    return build_source_payloads(candidates, companies_by_name)
+
+
 def build_final_rows(
     candidates,
     companies_by_name: dict,
     *,
     headers: list[str],
-    api_key: str | None,
-    model: str,
-    use_anthropic: bool,
+    api_key: str | None = None,
+    model: str = DEFAULT_MODEL,
+    use_anthropic: bool = True,
+    cfg=None,
+    defaults: ReportDefaults | None = None,
     log: Callable[[str], None] | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
-    """Returns (row dicts, method label: anthropic|deterministic)."""
-    if use_anthropic and api_key:
-        payloads = build_source_payloads(candidates, companies_by_name)
-        rows = format_hubspot_rows_with_anthropic(
-            source_rows=payloads,
-            headers=headers,
-            api_key=api_key,
-            model=model,
-            log=log,
+    """Returns (row dicts, method label: llm|deterministic).
+
+    Pass *cfg* (FallbackConfig) to enable the full LLM fallback chain.
+    Passing only *api_key* still works for backwards compatibility.
+    """
+    from gtm.linkedin_scraper.config import FallbackConfig, available_llm_providers
+
+    template_format = detect_template_format(headers)
+    deterministic = _deterministic_rows(
+        candidates,
+        companies_by_name,
+        headers,
+        template_format,
+        defaults,
+    )
+
+    if not use_anthropic:
+        return deterministic, "deterministic"
+
+    # Build effective config: prefer passed cfg; fall back to api_key-only stub
+    if cfg is None and api_key:
+        cfg = FallbackConfig(
+            brave_api_key=None,
+            serper_api_key=None,
+            tavily_api_key=None,
+            apollo_api_key=None,
+            anthropic_api_key=api_key,
+            anthropic_model=model,
         )
-        return rows, "anthropic"
-    rows = build_hubspot_rows(candidates, companies_by_name)
-    return [normalize_row_dict(r, headers) for r in rows], "deterministic"
+
+    if cfg is None:
+        return deterministic, "deterministic"
+
+    providers = available_llm_providers(cfg)
+    if not providers:
+        return deterministic, "deterministic"
+
+    payloads = _source_payloads(
+        candidates,
+        companies_by_name,
+        headers,
+        template_format,
+        defaults,
+    )
+    rows = format_rows_with_llm(
+        source_rows=payloads,
+        fallback_rows=deterministic,
+        headers=headers,
+        template_format=template_format,
+        cfg=cfg,
+        log=log,
+    )
+    return rows, "llm"

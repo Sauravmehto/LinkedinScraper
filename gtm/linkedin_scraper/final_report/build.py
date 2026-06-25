@@ -16,6 +16,7 @@ from gtm.linkedin_scraper.people_discovery.candidate_cap import (
 from .anthropic_report import build_final_rows
 from .hubspot_data_template import HUBSPOT_DATA_TEMPLATE, load_template_headers
 from .merge import FinalReportStats, merge_and_filter_people
+from .template_map import ReportDefaults
 from .writer import write_hubspot_data_report
 
 DEFAULT_TEMPLATE = OUTPUT_DIR / "Hubspot CD 20052026 1.xlsx"
@@ -80,17 +81,25 @@ def build_final_report(
 
     headers = load_template_headers(template_path)
     cfg = load_fallback_config()
-    anthropic_key = cfg.anthropic_api_key if use_anthropic else None
-    if use_anthropic and not anthropic_key:
-        _log("Anthropic final report: skipped (no ANTHROPIC_API_KEY); using deterministic mapping")
+
+    from gtm.linkedin_scraper.config import available_llm_providers
+    providers = available_llm_providers(cfg)
+    if use_anthropic and providers:
+        _log(f"LLM final report: providers available: {', '.join(providers)}")
+    elif use_anthropic:
+        _log("LLM final report: skipped (no LLM API keys configured); using deterministic mapping")
 
     row_dicts, method = build_final_rows(
         candidates,
         companies_by_name,
         headers=headers,
-        api_key=anthropic_key,
-        model=cfg.anthropic_model or "claude-sonnet-4-5-20250929",
-        use_anthropic=bool(use_anthropic and anthropic_key),
+        use_anthropic=use_anthropic,
+        cfg=cfg,
+        defaults=ReportDefaults(
+            lead_status=lead_status,
+            lifecycle_stage=lifecycle_stage,
+            owner_id=owner_id,
+        ),
         log=_log,
     )
     stats.written = len(row_dicts)
