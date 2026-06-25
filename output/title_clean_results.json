@@ -1,0 +1,366 @@
+[
+  {
+    "original": "Susan Epstein - Director of Legal Affairs",
+    "cleaned_job_title": "Director of Legal Affairs"
+  },
+  {
+    "original": "Sae Ra Park, MBA, MBT, CPA - Director of Tax",
+    "cleaned_job_title": "Director of Tax"
+  },
+  {
+    "original": "Joanne Morano - Director of Property Management",
+    "cleaned_job_title": "Director of Property Management"
+  },
+  {
+    "original": "Andrew Connolly - Director, Technical Services & MWEP Management",
+    "cleaned_job_title": "Director"
+  },
+  {
+    "original": "Don Edwards - Senior Director Asset Management",
+    "cleaned_job_title": "Senior Director Asset Management"
+  },
+  {
+    "original": "Brian McClean - Director Property Management",
+    "cleaned_job_title": "Director Property Management"
+  },
+  {
+    "original": "Jack DiMartino - Former Director of Engineering",
+    "cleaned_job_title": "Former Director of Engineering"
+  },
+  {
+    "original": "Thomas Golden - Vice President, Development",
+    "cleaned_job_title": "Vice President, Development"
+  },
+  {
+    "original": "Mitchell Hersh - President & Chief Executive Officer",
+    "cleaned_job_title": "President & Chief Executive Officer"
+  },
+  {
+    "original": "magdi ali - realtor",
+    "cleaned_job_title": "realtor"
+  },
+  {
+    "original": "Glenn Baker - Property Manager",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Rose Kerr - Property Manager",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Giovanni Benavides - Property Manager",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Marc Ripp - Senior Associate General Counsel",
+    "cleaned_job_title": "Senior Associate General Counsel"
+  },
+  {
+    "original": "Octavius Mack - ceo",
+    "cleaned_job_title": "ceo"
+  },
+  {
+    "original": "Gary Wagner - Vice President and Senior Associate General Counsel",
+    "cleaned_job_title": "Vice President and Senior Associate General Counsel"
+  },
+  {
+    "original": "Stanley Miszczenski - Property Manager",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Marcus Molino - Project Mgr.",
+    "cleaned_job_title": "Project Mgr."
+  },
+  {
+    "original": "Michael Hueston - Property Manager at Mack-Cali Realty",
+    "cleaned_job_title": "Property Manager at Mack-Cali Realty"
+  },
+  {
+    "original": "Florence Schmitt - Property Manager at Mack-Cali Realty Corporation",
+    "cleaned_job_title": "Property Manager at Mack-Cali Realty Corporation"
+  },
+  {
+    "original": "bill keys - engineering",
+    "cleaned_job_title": "engineering"
+  },
+  {
+    "original": "maureen tucker - Accounts Payable Specialist at Mack-Cali Realty Corporation",
+    "cleaned_job_title": "maureen tucker"
+  },
+  {
+    "original": "Patricia Weathers - Sr Properrty Accountant",
+    "cleaned_job_title": "Sr Properrty Accountant"
+  },
+  {
+    "original": "Jeff M. Warner - Vice President of Leasing",
+    "cleaned_job_title": "Vice President of Leasing"
+  },
+  {
+    "original": "Gregory Brown - Looking for next opportunity! - Mack-Cali Realty Corporation",
+    "cleaned_job_title": "Looking for next opportunity!"
+  },
+  {
+    "original": "Jason Norris - Commerical Real Estate Manager - Mack-Cali Realty",
+    "cleaned_job_title": "Commerical Real Estate Manager"
+  },
+  {
+    "original": "Doug Himmelreich - Director of Leasing - Workspace Property Trust",
+    "cleaned_job_title": "Director of Leasing"
+  },
+  {
+    "original": "Jeffrey L. - Vice President - Regional Director Florida",
+    "cleaned_job_title": "Vice President - Regional Director Florida"
+  },
+  {
+    "original": "Wes Rudes - Director Of Leasing - Workspace Property Trust",
+    "cleaned_job_title": "Director Of Leasing"
+  },
+  {
+    "original": "Brad Butler - Experienced VP Regional Director | Real Estate Leasing - Workspace Property Trust",
+    "cleaned_job_title": "Experienced VP Regional Director | Real Estate Leasing"
+  },
+  {
+    "original": "Chris Eckerd, CPM - SVP, Property Management - Workspace Property Trust",
+    "cleaned_job_title": "SVP"
+  },
+  {
+    "original": "Anthony Pascale Jr - Director of Financial Reporting",
+    "cleaned_job_title": "Director of Financial Reporting"
+  },
+  {
+    "original": "Kevin Ault - Workspace Property Trust",
+    "cleaned_job_title": "UNKNOWN"
+  },
+  {
+    "original": "Mikaela Sherbakov - Senior Corporate Accountant",
+    "cleaned_job_title": "Senior Corporate Accountant"
+  },
+  {
+    "original": "John Beale - Senior Property Manager",
+    "cleaned_job_title": "Senior Property Manager"
+  },
+  {
+    "original": "Erin Grandys - Property Manager skilled in Facility Management and Property Management - Workspace Property Trust",
+    "cleaned_job_title": "Property Manager skilled in Facility Management and Property Management"
+  },
+  {
+    "original": "Michael Gervasio - Senior Vice President",
+    "cleaned_job_title": "Senior Vice President"
+  },
+  {
+    "original": "Lisa Grace - Manager of Lease Administrator and Accounts Recievable",
+    "cleaned_job_title": "Manager of Lease Administrator and Accounts Recievable"
+  },
+  {
+    "original": "Stephan K. Pahides - SVP & General Counsel, Workspace Property Trust - Blacktop Industrial Trust",
+    "cleaned_job_title": "SVP & General Counsel"
+  },
+  {
+    "original": "Edgar Gaba - Workspace Property Trust",
+    "cleaned_job_title": "Gaba"
+  },
+  {
+    "original": "Marisa Verros - Workspace Property Trust",
+    "cleaned_job_title": "Verros"
+  },
+  {
+    "original": "Trish Couch - -- - Workspace Property Trust",
+    "cleaned_job_title": "--"
+  },
+  {
+    "original": "Patty Giedgowd - Workspace Property Trust",
+    "cleaned_job_title": "Giedgowd"
+  },
+  {
+    "original": "Todd King - Property Manager - Workspace Property Trust",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Michael Wood - Workspace Property Trust",
+    "cleaned_job_title": "Wood"
+  },
+  {
+    "original": "Francis X. Shea - Construction & Development Executive - Workspace Property Trust",
+    "cleaned_job_title": "Construction & Development Executive"
+  },
+  {
+    "original": "Patrick Wernig - Chief Financial Officer",
+    "cleaned_job_title": "Chief Financial Officer"
+  },
+  {
+    "original": "Dana Pickett - Director of Operations, Inspire Workspace",
+    "cleaned_job_title": "Director of Operations"
+  },
+  {
+    "original": "Jennie O'Brien, CPA - SVP, Chief Accounting Officer",
+    "cleaned_job_title": "SVP, Chief Accounting Officer"
+  },
+  {
+    "original": "Maxim Sertl - Director, Underwriting & Research",
+    "cleaned_job_title": "Director, Underwriting & Research"
+  },
+  {
+    "original": "Vinh Nguyen - Director, Information Technology",
+    "cleaned_job_title": "Director, Information Technology"
+  },
+  {
+    "original": "Ryan Albano - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Albano"
+  },
+  {
+    "original": "Matthew Morsch - Senior Manager, Property Management, Industrial at Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Senior Manager"
+  },
+  {
+    "original": "Andrea Paquin, CPP, CEBS - Manager, Payroll & Benefits",
+    "cleaned_job_title": "Manager, Payroll & Benefits"
+  },
+  {
+    "original": "Amy Tait - Retired Founder/Chair/CEO at Broadstone Net Lease",
+    "cleaned_job_title": "Retired Founder/Chair/CEO at Broadstone Net Lease"
+  },
+  {
+    "original": "Michael Caruso - Senior Vice President, Underwriting & Strategy",
+    "cleaned_job_title": "Senior Vice President, Underwriting & Strategy"
+  },
+  {
+    "original": "Will Garner - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Garner"
+  },
+  {
+    "original": "Ryan Rahaeuser - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Ryan Rahaeuser"
+  },
+  {
+    "original": "Kevin Fennell - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Fennell"
+  },
+  {
+    "original": "Ben Bills - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Ben Bills"
+  },
+  {
+    "original": "Luz Alvarez - Lease Administrator",
+    "cleaned_job_title": "Luz Alvarez"
+  },
+  {
+    "original": "Christina Ingerson - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Ingerson"
+  },
+  {
+    "original": "Laurie Hawkes - Chairman, Broadstone Net Lease, Inc. . (NYSE:BNL), - American Residential Properties, Inc.",
+    "cleaned_job_title": "Hawkes"
+  },
+  {
+    "original": "Mike Coke - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Coke"
+  },
+  {
+    "original": "Michael Gibbs, MBA - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Gibbs, MBA"
+  },
+  {
+    "original": "Matt Sauer - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Sauer"
+  },
+  {
+    "original": "Andrew Ritz - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Ritz"
+  },
+  {
+    "original": "Nathan Rathbun - Broadstone Net Lease, Inc.",
+    "cleaned_job_title": "Rathbun"
+  },
+  {
+    "original": "Luke Castanien - Senior Regional Director",
+    "cleaned_job_title": "Senior Regional Director"
+  },
+  {
+    "original": "Mason Berger - Sales Representative",
+    "cleaned_job_title": "Sales Representative"
+  },
+  {
+    "original": "Mark Pillor - Senior Sales Director",
+    "cleaned_job_title": "Senior Sales Director"
+  },
+  {
+    "original": "Scott Belval - Senior Sales Director",
+    "cleaned_job_title": "Senior Sales Director"
+  },
+  {
+    "original": "Scott Johnson - Managing Director - NexPoint",
+    "cleaned_job_title": "Managing Director"
+  },
+  {
+    "original": "Angela Barbera - Managing Director, National Accounts",
+    "cleaned_job_title": "Managing Director, National Accounts"
+  },
+  {
+    "original": "Cameron Urano, CFA - Regional Sales Director",
+    "cleaned_job_title": "Regional Sales Director"
+  },
+  {
+    "original": "Micah Jordan - Senior Director, National Accounts",
+    "cleaned_job_title": "Senior Director, National Accounts"
+  },
+  {
+    "original": "Made Setiawan - Director of Credit and Collections",
+    "cleaned_job_title": "Director of Credit and Collections"
+  },
+  {
+    "original": "Paul Meekey - Director of Managed Parternships",
+    "cleaned_job_title": "Director of Managed Parternships"
+  },
+  {
+    "original": "Dave Holeman - CEO",
+    "cleaned_job_title": "CEO"
+  },
+  {
+    "original": "Mike Parrish - Whitestone REIT - LinkedIn",
+    "cleaned_job_title": "Parrish"
+  },
+  {
+    "original": "Matthew Okmin - Whitestone REIT",
+    "cleaned_job_title": "Okmin"
+  },
+  {
+    "original": "Melanie Richards - Property Manager",
+    "cleaned_job_title": "Property Manager"
+  },
+  {
+    "original": "Scott Hogan - Whitestone REIT",
+    "cleaned_job_title": "Hogan"
+  },
+  {
+    "original": "Daniel Figard - Whitestone REIT",
+    "cleaned_job_title": "Figard"
+  },
+  {
+    "original": "David Mordy - Whitestone REIT",
+    "cleaned_job_title": "Mordy"
+  },
+  {
+    "original": "Tim Ng - Whitestone REIT",
+    "cleaned_job_title": "Ng"
+  },
+  {
+    "original": "Camille Patterson, CCIM - Whitestone REIT",
+    "cleaned_job_title": "Patterson, CCIM"
+  },
+  {
+    "original": "David Spagnolo - Whitestone REIT",
+    "cleaned_job_title": "Spagnolo"
+  },
+  {
+    "original": "Mark Cervantes - Whitestone REIT",
+    "cleaned_job_title": "Cervantes"
+  },
+  {
+    "original": "Ibrahim Mhawesh - Whitestone REIT | LinkedIn",
+    "cleaned_job_title": "UNKNOWN"
+  },
+  {
+    "original": "Ted Zeck - Retired CPA, now just walking and drinking Leinie’s - Whitestone REIT",
+    "cleaned_job_title": "Retired CPA, now just walking and drinking Leinie’s"
+  }
+]
