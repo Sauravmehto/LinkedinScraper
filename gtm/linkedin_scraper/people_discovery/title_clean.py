@@ -7,15 +7,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable
 
-import httpx
-
 from gtm.linkedin_scraper.config import load_fallback_config
+from gtm.linkedin_scraper.llm_fallback import llm_call_from_config
 from gtm.linkedin_scraper.people_discovery.anthropic_enrich import DEFAULT_MODEL
-from gtm.linkedin_scraper.scrapers.http_client import DEFAULT_HEADERS
 
 from .types import PersonCandidate
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 UNKNOWN_TITLE = "UNKNOWN"
 
 KNOWN_CERTS: tuple[str, ...] = (
@@ -336,16 +333,17 @@ def _parse_title_clean_json(text: str) -> list[dict[str, str]]:
         return []
 
 
-def clean_job_titles_with_anthropic(
+def clean_job_titles_with_llm(
     items: list[dict[str, str]],
     *,
-    api_key: str,
-    model: str = DEFAULT_MODEL,
+    cfg,
     timeout: float = 45.0,
     batch_size: int = 30,
+    log: Callable | None = None,
 ) -> dict[str, str]:
-    """Batch-clean titles via Claude; key = original title string."""
-    if not api_key or not items:
+    """Batch-clean titles via LLM fallback chain; key = original title string."""
+    _log = log or (lambda _m: None)
+    if not items:
         return {}
 
     results: dict[str, str] = {}
@@ -363,36 +361,16 @@ def clean_job_titles_with_anthropic(
                 for row in chunk
             ]
         }
-        try:
-            with httpx.Client(timeout=timeout, headers=DEFAULT_HEADERS) as client:
-                resp = client.post(
-                    ANTHROPIC_API_URL,
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "max_tokens": 4096,
-                        "system": TITLE_CLEAN_SYSTEM_PROMPT,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": json.dumps(payload, ensure_ascii=False),
-                            }
-                        ],
-                    },
-                )
-                resp.raise_for_status()
-                body = resp.json()
-        except Exception:
+        text = llm_call_from_config(
+            cfg,
+            system=TITLE_CLEAN_SYSTEM_PROMPT,
+            user_content=json.dumps(payload, ensure_ascii=False),
+            max_tokens=4096,
+            timeout=timeout,
+            log=_log,
+        )
+        if not text:
             continue
-
-        text = ""
-        for block in body.get("content") or []:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text += str(block.get("text") or "")
 
         for row in _parse_title_clean_json(text):
             original = row["original"]
@@ -400,6 +378,28 @@ def clean_job_titles_with_anthropic(
             results[original] = cleaned
 
     return results
+
+
+def clean_job_titles_with_anthropic(
+    items: list[dict[str, str]],
+    *,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    timeout: float = 45.0,
+    batch_size: int = 30,
+) -> dict[str, str]:
+    """Backwards-compatible wrapper — delegates to the LLM fallback chain."""
+    from gtm.linkedin_scraper.config import FallbackConfig
+
+    cfg = FallbackConfig(
+        brave_api_key=None,
+        serper_api_key=None,
+        tavily_api_key=None,
+        apollo_api_key=None,
+        anthropic_api_key=api_key,
+        anthropic_model=model,
+    )
+    return clean_job_titles_with_llm(items, cfg=cfg, timeout=timeout, batch_size=batch_size)
 
 
 def _with_title(candidate: PersonCandidate, title: str) -> PersonCandidate:
@@ -443,13 +443,11 @@ def clean_candidates_job_titles(
     timeout: float = 45.0,
     log: Callable[[str], None] | None = None,
 ) -> tuple[list[PersonCandidate], TitleCleanStats]:
-    """Clean person_title on all candidates; optional Claude retry for hard rows."""
+    """Clean person_title on all candidates; optional LLM retry for hard rows."""
     _log = log or (lambda _msg: None)
     stats = TitleCleanStats(candidates_in=len(candidates))
 
     cfg = load_fallback_config()
-    anthropic_key = api_key or cfg.anthropic_api_key
-    anthropic_model = model or cfg.anthropic_model or DEFAULT_MODEL
 
     deterministic: list[dict[str, str]] = []
     retry_queue: list[dict[str, str]] = []
@@ -471,20 +469,20 @@ def clean_candidates_job_titles(
                 }
             )
 
-    anthropic_map: dict[str, str] = {}
-    if enable_anthropic and anthropic_key and retry_queue:
-        anthropic_map = clean_job_titles_with_anthropic(
+    llm_map: dict[str, str] = {}
+    if enable_anthropic and retry_queue:
+        llm_map = clean_job_titles_with_llm(
             retry_queue,
-            api_key=anthropic_key,
-            model=anthropic_model,
+            cfg=cfg,
             timeout=timeout,
+            log=_log,
         )
-        stats.anthropic_calls = 1 if anthropic_map else 0
+        stats.anthropic_calls = 1 if llm_map else 0
 
     out: list[PersonCandidate] = []
     for candidate, result in zip(candidates, deterministic, strict=True):
         original = result["original"]
-        cleaned = anthropic_map.get(original) or result["cleaned_job_title"]
+        cleaned = llm_map.get(original) or result["cleaned_job_title"]
         if cleaned == UNKNOWN_TITLE:
             stats.unknown += 1
         elif cleaned != original:

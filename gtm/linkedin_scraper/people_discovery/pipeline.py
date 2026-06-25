@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
@@ -12,6 +13,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from gtm.linkedin_scraper.config import load_fallback_config, resolve_default_people_sources
 from gtm.linkedin_scraper.io_utils import (
+    COMPANY_LINKEDIN_URL_HEADER,
     OUTPUT_DIR,
     PROFILE_HEADER,
     WEBSITE_HEADER,
@@ -409,6 +411,44 @@ def _team_hits(
     return hits
 
 
+_BAD_COMPANY_LI_RE = re.compile(
+    r"/(mycompany|verification|login|authwall|signIn|checkpoint)[^/]*",
+    re.I,
+)
+
+
+def _is_valid_company_linkedin(url: str) -> bool:
+    raw = (url or "").strip()
+    if not raw:
+        return False
+    if _BAD_COMPANY_LI_RE.search(raw):
+        return False
+    if "/in/" in raw.lower():
+        return False
+    return bool(re.search(r"linkedin\.com/company/[a-zA-Z0-9_%\-\.]+", raw, re.I))
+
+
+def _clean_company_linkedin(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    cleaned = _BAD_COMPANY_LI_RE.sub("", raw).rstrip("/")
+    return cleaned if _is_valid_company_linkedin(cleaned) else ""
+
+
+def _pick_company_linkedin(*, user_provided: str, scraped: str) -> str:
+    """Prefer user-provided URL; fall back to scraped if valid; reject bad paths."""
+    if user_provided:
+        cleaned = _clean_company_linkedin(user_provided)
+        if cleaned:
+            return cleaned
+    if scraped:
+        cleaned = _clean_company_linkedin(scraped)
+        if cleaned:
+            return cleaned
+    return ""
+
+
 def _to_company_contexts(
     ws: Worksheet,
     *,
@@ -418,6 +458,7 @@ def _to_company_contexts(
     headers = get_header_row(ws)
     website_col = find_column_index(headers, WEBSITE_HEADER)
     profile_col = find_column_index(headers, PROFILE_HEADER)
+    user_li_col = find_column_index(headers, COMPANY_LINKEDIN_URL_HEADER)
     company_type_col = find_column_index(headers, company_type_col_name)
     if website_col is None:
         return []
@@ -425,10 +466,19 @@ def _to_company_contexts(
     for row_idx in range(2, ws.max_row + 1):
         company = str(ws.cell(row=row_idx, column=1).value or "").strip()
         website = str(ws.cell(row=row_idx, column=website_col + 1).value or "").strip()
-        company_linkedin = (
+        scraped_linkedin = (
             str(ws.cell(row=row_idx, column=profile_col + 1).value or "").strip()
             if profile_col is not None
             else ""
+        )
+        user_linkedin = (
+            str(ws.cell(row=row_idx, column=user_li_col + 1).value or "").strip()
+            if user_li_col is not None
+            else ""
+        )
+        company_linkedin = _pick_company_linkedin(
+            user_provided=user_linkedin,
+            scraped=scraped_linkedin,
         )
         if not company or not website:
             continue
