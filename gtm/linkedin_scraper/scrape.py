@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 from gtm.linkedin_scraper.config import DEFAULT_FALLBACK_STEPS, load_fallback_config
+from gtm.linkedin_scraper.fallbacks.linkedin_rules import is_valid_company_url
 from gtm.linkedin_scraper.fallbacks.manager import FallbackStats, run_fallback_waterfall
 from gtm.linkedin_scraper.io_utils import (
     PROFILE_HEADER,
@@ -213,14 +214,24 @@ def run_scrape(
         log(f"Step 3: trying Playwright for {len(pending_step3)} row(s)...")
         for i, (row_idx, company, website) in enumerate(pending_step3, 1):
             result = scrape_company_website(website, steps=(3,), timeout=float(timeout))
+            profile = result.profile_url
+            if profile and not is_valid_company_url(profile):
+                log(
+                    f"[step3 {i}/{len(pending_step3)}] {company}: "
+                    f"rejected bad LinkedIn URL ({profile}) -> fallback"
+                )
+                pending_fallbacks.append((row_idx, company, website))
+                result = type(result)(profile_url=None, method="not_found", note="bad_url_rejected")
+                profile = None
             status = result_to_status(result)
-            results[row_idx] = result.profile_url
-            if result.profile_url:
+            results[row_idx] = profile
+            if profile:
                 stats.fail -= 1
                 stats.ok += 1
                 methods[row_idx] = result.method
             else:
-                pending_fallbacks.append((row_idx, company, website))
+                if not any(row_idx == pf[0] for pf in pending_fallbacks):
+                    pending_fallbacks.append((row_idx, company, website))
             log(f"[step3 {i}/{len(pending_step3)}] {company}: {status}")
 
     if enable_fallbacks:

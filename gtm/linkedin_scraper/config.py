@@ -35,6 +35,17 @@ class FallbackConfig:
     rocketreach_api_key: str | None = None
     anthropic_api_key: str | None = None
     anthropic_model: str | None = None
+    # ---- LLM fallback providers ----
+    gemini_api_key: str | None = None
+    gemini_model: str | None = None
+    groq_api_key: str | None = None
+    groq_model: str | None = None
+    mistral_api_key: str | None = None
+    mistral_model: str | None = None
+    cloudflare_api_token: str | None = None
+    cloudflare_account_id: str | None = None
+    cloudflare_model: str | None = None
+    # --------------------------------
     hubspot_access_token: str | None = None
     hubspot_contact_owner_id: str | None = None
     hubspot_lifecycle_stage: str | None = None
@@ -73,6 +84,15 @@ def load_fallback_config() -> FallbackConfig:
         rocketreach_api_key=os.getenv("ROCKETREACH_API_KEY"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         anthropic_model=os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-5-20250929",
+        gemini_api_key=os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY"),
+        gemini_model=os.getenv("GEMINI_MODEL") or "gemini-2.0-flash",
+        groq_api_key=os.getenv("GROQ_API_KEY"),
+        groq_model=os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile",
+        mistral_api_key=os.getenv("MISTRAL_API_KEY"),
+        mistral_model=os.getenv("MISTRAL_MODEL") or "mistral-medium-latest",
+        cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN"),
+        cloudflare_account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID"),
+        cloudflare_model=os.getenv("CLOUDFLARE_MODEL") or "@cf/meta/llama-3.1-8b-instruct",
         hubspot_access_token=_normalize_hubspot_token_env(os.getenv("HUBSPOT_ACCESS_TOKEN")),
         hubspot_contact_owner_id=os.getenv("HUBSPOT_CONTACT_OWNER_ID"),
         hubspot_lifecycle_stage=os.getenv("HUBSPOT_LIFECYCLE_STAGE") or "lead",
@@ -120,6 +140,23 @@ def missing_enrichment_keys(cfg: FallbackConfig | None = None) -> list[str]:
         (c.firecrawl_api_key, "FIRECRAWL_API_KEY"),
     )
     return [label for value, label in checks if not value]
+
+
+def available_llm_providers(cfg: FallbackConfig | None = None) -> list[str]:
+    """Return ordered list of LLM provider names that have API keys configured."""
+    c = cfg or load_fallback_config()
+    providers = []
+    if c.anthropic_api_key:
+        providers.append("Anthropic")
+    if c.gemini_api_key:
+        providers.append("Gemini")
+    if c.groq_api_key:
+        providers.append("Groq")
+    if c.mistral_api_key:
+        providers.append("Mistral")
+    if c.cloudflare_api_token and c.cloudflare_account_id:
+        providers.append("Cloudflare")
+    return providers
 
 
 def log_recommended_stack_status(log: Callable[[str], None] = print) -> None:

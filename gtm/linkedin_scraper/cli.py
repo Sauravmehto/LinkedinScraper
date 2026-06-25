@@ -45,7 +45,11 @@ from gtm.linkedin_scraper.final_report import (
     build_final_report,
     resolve_template_path,
 )
-from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT, HUBSPOT_DATA_TEMPLATE
+from gtm.linkedin_scraper.final_report.build import (
+    GTM_FINAL_REPORT_OUTPUT,
+    GTM_FINAL_TEMPLATE,
+    HUBSPOT_DATA_TEMPLATE,
+)
 from gtm.linkedin_scraper.people_discovery.candidate_cap import (
     DEFAULT_MAX_PER_COMPANY,
     cap_candidates_per_company,
@@ -788,6 +792,17 @@ def cmd_run_full_intel(args: argparse.Namespace) -> int:
         log_recommended_stack_status(log)
         log("")
 
+    try:
+        from gtm.linkedin_scraper.validators.input_upload import validate_workbook as _validate_wb
+        _vr = _validate_wb(input_path, log=log)
+        _warnings = [r for r in _vr if r.has_warnings]
+        if _warnings:
+            log(f"Input validation: {len(_warnings)} row(s) with warnings (see above)")
+        else:
+            log("Input validation: OK")
+    except Exception:
+        pass
+
     wb = prepare_workbook(input_path, output_path, dry_run=args.dry_run)
     steps = parse_steps(args.steps)
 
@@ -1002,13 +1017,17 @@ def cmd_sync_hubspot(args: argparse.Namespace) -> int:
 
 
 def add_build_final_report_args(parser: argparse.ArgumentParser) -> None:
-    from gtm.linkedin_scraper.final_report.build import GTM_FINAL_REPORT_OUTPUT, HUBSPOT_DATA_TEMPLATE
+    from gtm.linkedin_scraper.final_report.build import (
+    GTM_FINAL_REPORT_OUTPUT,
+    GTM_FINAL_TEMPLATE,
+    HUBSPOT_DATA_TEMPLATE,
+)
 
     parser.add_argument(
         "--template",
         type=Path,
         default=None,
-        help=f"Report template (default: {HUBSPOT_DATA_TEMPLATE})",
+        help=f"Report template (default: {GTM_FINAL_TEMPLATE})",
     )
     parser.add_argument(
         "--companies",
@@ -1285,7 +1304,7 @@ def add_full_intel_report_args(parser: argparse.ArgumentParser) -> None:
         "--final-report-template",
         type=Path,
         default=None,
-        help=f"Report template (default: {HUBSPOT_DATA_TEMPLATE})",
+        help=f"Report template (default: {GTM_FINAL_TEMPLATE})",
     )
     parser.add_argument(
         "--final-report-output",
@@ -1421,10 +1440,13 @@ def build_parser() -> argparse.ArgumentParser:
             "enable_title_clean": True,
             "enable_enrichment": True,
             "enable_playwright_people": True,
-            "people_sources": "bing,serper,apollo",
+            "people_sources": "bing,serper,apollo,tavily",
             "coverage_mode": "max",
+            "refresh_cache": True,
             "people_output": OUTPUT_DIR / "decision_makers.xlsx",
             "final_report_output": OUTPUT_DIR / "final_report.xlsx",
+            "final_report_template": HUBSPOT_DATA_TEMPLATE,
+            "final_report_require_email": False,
             "anthropic_final_report": True,
             "force": True,
             "enable_fallbacks": True,

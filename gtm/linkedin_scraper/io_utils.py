@@ -24,12 +24,16 @@ WEBSITE_FINAL_URL_HEADER = "Website Final URL"
 URL_VALID_HEADER = "URL Valid (syntax)"
 URL_STATUS_HEADER = "URL Status (live)"
 
+COMPANY_LINKEDIN_URL_HEADER = "Company_LinkedIn_URL"
+
 PROFILE_COLUMN_ALIASES = (
     "profile url",
     "linkedin url",
     "linkedin profile",
     "linkedin company url",
     "linkedin link",
+    "company_linkedin_url",
+    "company linkedin url",
 )
 
 LINKEDIN_CELL_RE = re.compile(

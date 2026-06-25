@@ -18,6 +18,16 @@ LINKEDIN_RE = re.compile(
     re.IGNORECASE,
 )
 
+_BAD_LINKEDIN_PATH_RE = re.compile(
+    r"/(mycompany|verification|login|authwall|signIn|checkpoint|uas|m)/",
+    re.IGNORECASE,
+)
+
+
+def is_usable_linkedin_url(url: str) -> bool:
+    """True when the URL is a real company/person/school page, not a gated/system page."""
+    return not _BAD_LINKEDIN_PATH_RE.search(url or "")
+
 
 def normalize_website(url: str) -> Optional[str]:
     url = (url or "").strip()
@@ -39,10 +49,14 @@ def pick_best_linkedin(urls: list[str]) -> Optional[str]:
     unique: list[str] = []
     for u in urls:
         u = clean_linkedin_url(u)
+        if not is_usable_linkedin_url(u):
+            continue
         key = u.lower()
         if key not in seen:
             seen.add(key)
             unique.append(u)
+    if not unique:
+        return None
     for u in unique:
         if "/company/" in u.lower():
             return u
