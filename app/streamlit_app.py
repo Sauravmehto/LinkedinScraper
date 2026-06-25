@@ -235,6 +235,8 @@ def _run_pipeline(
             "--final-report-output",
             str(FINAL_REPORT_PATH),
             "--no-final-report-require-email",
+            "--refresh-cache",
+            "--people-sources", "bing,serper,apollo,tavily",
         ],
         cwd=REPO_ROOT,
         env=env,
@@ -286,6 +288,11 @@ st.caption("Upload your company list, run the pipeline, then download your HubSp
 
 # Step 1 — sample download
 st.subheader("Step 1 · Download sample file")
+st.caption(
+    "Required columns: **Company Name**, **Official Website** · "
+    "Recommended: **Company_LinkedIn_URL** · "
+    "Max **5 companies** per run"
+)
 if SAMPLE_PATH.exists():
     st.download_button(
         "Download Sample_file.xlsx",
@@ -301,7 +308,11 @@ st.divider()
 
 # Step 2 — upload
 st.subheader("Step 2 · Upload your company file")
-st.caption("Accepted: .xlsx or .csv (UTF-8) · Required column: Official Website")
+st.caption(
+    "Accepted: .xlsx or .csv (UTF-8) · Required column: **Official Website** · "
+    "Optional: **Company_LinkedIn_URL** (skip scrape for known pages) · "
+    "Max 5 companies"
+)
 
 uploaded = st.file_uploader(
     "Choose file",
@@ -370,6 +381,25 @@ if uploaded is not None:
             f"File ready: **{uploaded.name}** → download as **{out_name}** "
             f"(pipeline writes `output/final_report.xlsx`)"
         )
+        try:
+            from gtm.linkedin_scraper.validators.input_upload import validate_workbook as _validate_wb
+            _val_results = _validate_wb(INPUT_PATH, log=lambda _: None)
+            _any_warn = any(r.has_warnings for r in _val_results)
+            if _any_warn:
+                with st.expander("Input validation warnings (click to review)", expanded=True):
+                    for rv in _val_results:
+                        if not rv.has_warnings:
+                            continue
+                        col_a, col_b, col_c = st.columns([2, 3, 3])
+                        col_a.write(f"**Row {rv.row_num}** {rv.company_name}")
+                        col_b.write(rv.website_warning or "OK")
+                        col_c.write(rv.linkedin_warning or "OK")
+                        if rv.linkedin_corrected_to:
+                            col_c.caption(f"Will use: {rv.linkedin_corrected_to}")
+            else:
+                st.caption("Input validation: all URLs look good.")
+        except Exception:
+            pass
 else:
     if st.session_state.last_upload_sig:
         st.session_state.file_uploaded = False
@@ -381,21 +411,58 @@ else:
 
 st.divider()
 
-# Step 3 — run pipeline
+# Step 3 — Pre-flight checklist + run pipeline
 st.subheader("Step 3 · Run pipeline")
+
 if not st.session_state.file_uploaded:
     st.info("Upload a company file above to enable **Run Pipeline**.")
 else:
     try:
-        from gtm.linkedin_scraper.config import load_fallback_config, missing_enrichment_keys
+        from gtm.linkedin_scraper.config import (
+            available_llm_providers,
+            load_fallback_config,
+            missing_enrichment_keys,
+        )
 
-        _missing_keys = missing_enrichment_keys(load_fallback_config())
-        if _missing_keys:
-            st.warning(
-                "Missing API keys (fewer people/emails): "
-                + ", ".join(_missing_keys)
-                + ". Add them in `.env` or Render Environment."
-            )
+        _cfg = load_fallback_config()
+        _missing_keys = missing_enrichment_keys(_cfg)
+        _llm_providers = available_llm_providers(_cfg)
+
+        with st.expander("Pre-flight checklist", expanded=not _llm_providers):
+            def _status_icon(ok: bool) -> str:
+                return "✅" if ok else "⚠️"
+
+            _checks = [
+                ("Apollo (emails/phones)", bool(_cfg.apollo_api_key)),
+                ("Serper (people discovery)", bool(_cfg.serper_api_key)),
+                ("Tavily (people/company fallback)", bool(_cfg.tavily_api_key)),
+                ("Firecrawl (team pages)", bool(_cfg.firecrawl_api_key)),
+                ("Anthropic Claude", bool(_cfg.anthropic_api_key)),
+                ("Gemini (LLM fallback)", bool(_cfg.gemini_api_key)),
+                ("Groq (LLM fallback)", bool(_cfg.groq_api_key)),
+                ("Mistral (LLM fallback)", bool(_cfg.mistral_api_key)),
+                ("Cloudflare AI (LLM fallback)", bool(_cfg.cloudflare_api_token and _cfg.cloudflare_account_id)),
+            ]
+
+            _col1, _col2, _col3 = st.columns(3)
+            for _i, (_label, _ok) in enumerate(_checks):
+                _col = [_col1, _col2, _col3][_i % 3]
+                _col.write(f"{_status_icon(_ok)} {_label}")
+
+            if _llm_providers:
+                st.caption(f"LLM chain active: {' → '.join(_llm_providers)}")
+            else:
+                st.warning(
+                    "No LLM keys configured. Final report will use deterministic "
+                    "mapping only (no Claude/Gemini cleanup). Add at least one LLM key to `.env`."
+                )
+
+            if _missing_keys:
+                st.caption(
+                    "Missing recommended keys: " + ", ".join(_missing_keys)
+                    + " — add them in `.env` or Render Environment for better coverage."
+                )
+
     except Exception:
         pass
 
